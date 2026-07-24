@@ -1,0 +1,76 @@
+{
+  "event_status": null,
+  "format": "BO3",
+  "id": 20900,
+  "indoor": false,
+  "is_doubles": true,
+  "players": {
+    "p1": {
+      "backhand": null,
+      "birthday": null,
+      "country": null,
+      "data_completeness": {
+        "known": null,
+        "missing": [],
+        "note": "doubles team \u2014 per-player profile fields do not apply",
+        "of": null
+      },
+      "hand": null,
+      "id": 12408,
+      "is_doubles_team": true,
+      "name": "Andrej Martin / DeMuth",
+      "ranking": null,
+      "ranking_movement": null,
+      "ranking_points": null,
+      "tour": "Challenger"
+    },
+    "p2": {
+      "backhand": null,
+      "birthday": null,
+      "country": null,
+      "data_completeness": {
+        "known": null,
+        "missing": [],
+        "note": "doubles team \u2014 per-player profile fields do not apply",
+        "of": null
+      },
+      "hand": null,
+      "id": 12409,
+      "is_doubles_team": true,
+      "name": "Abdullah Shelbayh / Pablo Llamas Ruiz",
+      "ranking": null,
+      "ranking_movement": null,
+      "ranking_points": null,
+      "tour": "Challenger"
+    }
+  },
+  "round": "Bloomfield Hills - 1/8-finals",
+  "scheduled_time": "2026-07-23T21:05:00Z",
+  "score": {
+    "games": [
+      [
+        1,
+        2
+      ],
+      [
+        6,
+        6
+      ]
+    ],
+    "is_tiebreak": false,
+    "points": [
+      "0",
+      "0"
+    ],
+    "server": 2,
+    "sets": [
+      0,
+      2
+    ],
+    "timestamp": "2026-07-23T21:58:48.030366Z"
+  },
+  "status": "completed",
+  "surface": "hard",
+  "tournament": "Bloomfield Hills",
+  "winner": 2
+}

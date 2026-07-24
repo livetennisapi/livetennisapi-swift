@@ -1,0 +1,55 @@
+{
+  "event_status": null,
+  "format": "BO3",
+  "id": 22213,
+  "indoor": false,
+  "is_doubles": false,
+  "players": {
+    "p1": {
+      "backhand": null,
+      "birthday": "1999-12-28",
+      "country": "jpn",
+      "data_completeness": {
+        "known": 4,
+        "missing": [
+          "backhand"
+        ],
+        "of": 5
+      },
+      "hand": "R",
+      "id": 607,
+      "is_doubles_team": false,
+      "name": "Ryuki Matsuda",
+      "ranking": 774,
+      "ranking_movement": "up",
+      "ranking_points": 39,
+      "tour": "atp"
+    },
+    "p2": {
+      "backhand": null,
+      "birthday": "2000-12-21",
+      "country": "jpn",
+      "data_completeness": {
+        "known": 4,
+        "missing": [
+          "backhand"
+        ],
+        "of": 5
+      },
+      "hand": "L",
+      "id": 1935,
+      "is_doubles_team": false,
+      "name": "Taisei Ichikawa",
+      "ranking": 798,
+      "ranking_movement": "down",
+      "ranking_points": 37,
+      "tour": "atp"
+    }
+  },
+  "round": "M15 Bali - Quarter-finals",
+  "scheduled_time": "2026-07-24T05:30:00Z",
+  "score": null,
+  "status": "upcoming",
+  "surface": "hard",
+  "tournament": "M15 Bali"
+}

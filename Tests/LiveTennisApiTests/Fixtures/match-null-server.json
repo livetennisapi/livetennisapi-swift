@@ -1,0 +1,77 @@
+{
+  "event_status": null,
+  "format": "BO3",
+  "id": 21844,
+  "indoor": false,
+  "is_doubles": false,
+  "players": {
+    "p1": {
+      "backhand": 2,
+      "birthday": "1989-11-18",
+      "country": "chn",
+      "data_completeness": {
+        "known": 5,
+        "missing": [],
+        "of": 5
+      },
+      "hand": "R",
+      "id": 1102,
+      "is_doubles_team": false,
+      "name": "Jia-Jing Lu",
+      "ranking": 405,
+      "ranking_movement": "up",
+      "ranking_points": 154,
+      "tour": null
+    },
+    "p2": {
+      "backhand": null,
+      "birthday": "2004-02-19",
+      "country": "can",
+      "data_completeness": {
+        "known": 3,
+        "missing": [
+          "backhand",
+          "hand"
+        ],
+        "of": 5
+      },
+      "hand": null,
+      "id": 5093,
+      "is_doubles_team": false,
+      "name": "Dasha Plekhanova",
+      "ranking": 534,
+      "ranking_movement": "down",
+      "ranking_points": 45,
+      "tour": "wta"
+    }
+  },
+  "round": "W35 Saskatoon - 1/8-finals",
+  "scheduled_time": "2026-07-23T21:45:00Z",
+  "score": {
+    "games": [
+      [
+        6,
+        6
+      ],
+      [
+        1,
+        4
+      ]
+    ],
+    "is_tiebreak": false,
+    "points": [
+      "0",
+      "0"
+    ],
+    "server": null,
+    "sets": [
+      2,
+      0
+    ],
+    "timestamp": "2026-07-23T23:15:31.875861Z"
+  },
+  "status": "completed",
+  "surface": "hard",
+  "tournament": "W35 Saskatoon",
+  "winner": 1
+}
