@@ -1,0 +1,74 @@
+{
+  "event_status": "Walk Over",
+  "format": "BO3",
+  "id": 22050,
+  "indoor": false,
+  "is_doubles": false,
+  "players": {
+    "p1": {
+      "backhand": null,
+      "birthday": "1999-04-27",
+      "country": "fra",
+      "data_completeness": {
+        "known": 4,
+        "missing": [
+          "backhand"
+        ],
+        "of": 5
+      },
+      "hand": "R",
+      "id": 4879,
+      "is_doubles_team": false,
+      "name": "Alexandre Reco",
+      "ranking": 1082,
+      "ranking_movement": "up",
+      "ranking_points": 15,
+      "tour": "atp"
+    },
+    "p2": {
+      "backhand": null,
+      "birthday": null,
+      "country": "fra",
+      "data_completeness": {
+        "known": 2,
+        "missing": [
+          "backhand",
+          "birthday",
+          "hand"
+        ],
+        "of": 5
+      },
+      "hand": null,
+      "id": 12470,
+      "is_doubles_team": false,
+      "name": "Loic Namigandet Tenguere",
+      "ranking": 1642,
+      "ranking_movement": null,
+      "ranking_points": null,
+      "tour": "atp"
+    }
+  },
+  "round": "M15 Rognac - 1/8-finals",
+  "scheduled_time": "2026-07-23T14:30:00Z",
+  "score": {
+    "games": [
+      [],
+      []
+    ],
+    "is_tiebreak": false,
+    "points": [
+      null,
+      null
+    ],
+    "server": null,
+    "sets": [
+      0,
+      0
+    ],
+    "timestamp": "2026-07-23T15:36:23.874497Z"
+  },
+  "status": "completed",
+  "surface": "hard",
+  "tournament": "M15 Rognac",
+  "winner": null
+}

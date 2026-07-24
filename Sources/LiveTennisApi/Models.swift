@@ -155,7 +155,11 @@ public struct Score: Decodable, Sendable, CustomStringConvertible {
     public let games: [[Int]]
     /// The current game's points as strings: `"0"`, `"15"`, `"30"`, `"40"`,
     /// `"AD"`. During a tiebreak they are numeric strings. Never integers.
-    public let points: [String]
+    ///
+    /// Each entry is optional because the live API sends `[null, null]` on a
+    /// score with no current game — observed on completed matches with empty
+    /// ``games`` (the OpenAPI schema does not admit this, the wire does).
+    public let points: [String?]
     /// Which player is serving, 1 or 2. `nil` when unknown — which happens
     /// inside otherwise-present scores, so this stays optional.
     public let server: Int?
@@ -179,7 +183,7 @@ public struct Score: Decodable, Sendable, CustomStringConvertible {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         sets = try c.decodeIfPresent([Int].self, forKey: .sets) ?? []
         games = try c.decodeIfPresent([[Int]].self, forKey: .games) ?? []
-        points = try c.decodeIfPresent([String].self, forKey: .points) ?? []
+        points = try c.decodeIfPresent([String?].self, forKey: .points) ?? []
         server = try c.decodeIfPresent(Int.self, forKey: .server)
         isTiebreak = try c.decodeIfPresent(Bool.self, forKey: .isTiebreak) ?? false
         winProbabilityP1 = try c.decodeIfPresent(Double.self, forKey: .winProbabilityP1)
@@ -210,8 +214,8 @@ public struct Score: Decodable, Sendable, CustomStringConvertible {
         if parts.isEmpty, sets.count >= 2 {
             parts.append("\(sets[0])-\(sets[1])")
         }
-        if points.count >= 2 {
-            parts.append("(\(points[0])-\(points[1]))")
+        if points.count >= 2, let p1 = points[0], let p2 = points[1] {
+            parts.append("(\(p1)-\(p2))")
         }
         return parts.isEmpty ? "-" : parts.joined(separator: " ")
     }

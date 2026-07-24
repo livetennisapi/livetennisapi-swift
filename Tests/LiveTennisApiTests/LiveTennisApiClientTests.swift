@@ -143,6 +143,20 @@ final class LiveTennisApiClientTests: XCTestCase {
         XCTAssertNotNil(score.timestamp)
     }
 
+    func testADeadScoreCarriesNullPointsEntries() async throws {
+        // Recorded live: a completed match can carry a present score whose
+        // points are [null, null] and whose games are [[], []]. The OpenAPI
+        // schema types points as string items; the wire disagrees.
+        respond(body: fixture("match-dead-score"))
+
+        let match = try await makeClient().getMatch(22050)
+        let score = try XCTUnwrap(match.score, "score is present")
+        XCTAssertEqual(score.points, [nil, nil])
+        XCTAssertNil(score.server)
+        XCTAssertEqual(score.numSets, 0)
+        XCTAssertEqual(score.description, "0-0", "sets fall back when games are empty")
+    }
+
     func testDoublesTeamCompletenessIsNullWithANote() async throws {
         respond(body: fixture("match-doubles"))
 
