@@ -8,7 +8,7 @@ import Foundation
 /// ``LiveTennisApiError/upgradeRequired(_:requiredTier:)``.
 public enum Tier: String, Sendable, Comparable, CaseIterable {
     /// Self-serve, no card: live and upcoming matches, scores, players and
-    /// fixtures. 1000 requests/day.
+    /// fixtures. 100 requests/day.
     case free = "FREE"
     /// Adds historical results.
     case basic = "BASIC"
