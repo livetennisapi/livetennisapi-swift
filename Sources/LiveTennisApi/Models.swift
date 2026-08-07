@@ -5,15 +5,17 @@ import Foundation
 // Timestamps are carried as the API sends them — UTC ISO 8601 strings with a
 // `Z` suffix (fractional seconds possible) — parse them as you prefer.
 
-/// A circuit accepted by the `tour` *filter* on
-/// ``LiveTennisApiClient/listMatches(status:tour:limit:offset:)`` and
-/// ``LiveTennisApiClient/listFixtures(tour:limit:offset:)``.
+/// A circuit accepted by the `tour` *filter* on the match, fixture and
+/// history list endpoints — the five tours the API serves: ATP, WTA,
+/// Challenger, ITF and juniors.
 ///
 /// Each value covers its singles and doubles draws, so ``atp`` includes ATP
 /// doubles and ``juniors`` covers both the boys' and girls' Grand Slam draws.
 ///
-/// This is the vocabulary the API accepts as a filter, which is **not** the
-/// one it returns in ``Player/tour`` and ``Fixture/tour``: those are granular
+/// This is the vocabulary the API accepts as a filter, and the one
+/// ``Match/tour`` returns — both are derived from one registry, so a match
+/// selected by `?tour=` always carries that value. It is **not** the
+/// vocabulary of ``Player/tour`` and ``Fixture/tour``: those are granular
 /// (`"juniors_boys"`, `"challenger_men"`) and a doubles team reports
 /// UPPERCASE (`"ATP"`). They stay plain strings for that reason — never parse
 /// them into this enum. An unrecognised filter value is rejected with a 400
@@ -105,9 +107,9 @@ public struct Health: Decodable, Sendable {
 
 /// The pagination envelope beside a list response.
 ///
-/// `count` describes the page just returned, not the whole collection, so it
-/// cannot be used to compute a page count. Detect the end of a list by
-/// receiving fewer items than you asked for.
+/// `count` describes the page just returned, not the whole collection.
+/// Detect the end of a list with ``hasMore`` where the endpoint sends it,
+/// falling back to receiving fewer items than you asked for.
 public struct ListMeta: Decodable, Sendable {
     /// The page size applied.
     public let limit: Int?
@@ -115,12 +117,23 @@ public struct ListMeta: Decodable, Sendable {
     public let offset: Int?
     /// Items on this page.
     public let count: Int?
-    /// Echoes the filter on ``LiveTennisApiClient/listMarkets(matchId:)``,
-    /// the only endpoint that sets it.
+    /// The size of the whole filtered set. `nil` when it cannot be counted
+    /// cheaply — `/matches?status=completed` always reports it null.
+    public let total: Int?
+    /// Whether more results exist beyond this page. Read this rather than
+    /// comparing ``count`` to ``limit``.
+    public let hasMore: Bool?
+    /// Echoes the match filter on ``LiveTennisApiClient/listMarkets(matchId:)``
+    /// and ``LiveTennisApiClient/getMatchPrices(matchId:limit:minutes:)``.
     public let matchId: Int64?
+    /// Echoes the lookback window on
+    /// ``LiveTennisApiClient/getMatchPrices(matchId:limit:minutes:)``, the
+    /// only endpoint that sets it.
+    public let minutes: Int?
 
     enum CodingKeys: String, CodingKey {
-        case limit, offset, count
+        case limit, offset, count, total, minutes
+        case hasMore = "has_more"
         case matchId = "match_id"
     }
 }
@@ -347,17 +360,37 @@ public struct Match: Decodable, Sendable {
     public let id: Int64
     /// The event name.
     public let tournament: String
+    /// The tour, in the SAME vocabulary the ``Tour`` filter accepts — a match
+    /// selected by `?tour=` always carries that value here, so unlike
+    /// ``Player/tour`` this one is safe to group and filter on. `nil` when
+    /// the feed never stated a tour or the event has no public tour name
+    /// (exhibitions, team and mixed events) — and, defensively, for a value
+    /// this library version does not know.
+    public let tour: Tour?
+    /// Stable tournament identity — one id per tournament × event type,
+    /// stable across seasons; joins `/tournaments/{id}`. `nil` on matches
+    /// ingested before the catalogue covered their tournament.
+    public let tournamentId: String?
     /// `"hard"`, `"clay"` or `"grass"`.
     public let surface: String?
     /// Whether the court is indoors.
     public let indoor: Bool
     /// `"BO3"` or `"BO5"`.
     public let format: String?
-    /// The round name, such as `"QF"`.
+    /// The round name as the feed labels it, free text.
     public let round: String?
+    /// The round in the archive's controlled vocabulary (`"F"`, `"SF"`,
+    /// `"QF"`, `"R16"` … `"Q"` for a qualifying round the feed does not
+    /// number), normalised from ``round``. `nil` when the label is
+    /// unrecognised — never guessed.
+    public let roundCode: String?
     /// The lifecycle state.
     public let status: MatchStatus
-    /// The API's finer-grained status string, such as a suspension reason.
+    /// How the match ended (or paused) when it did not run its course:
+    /// `"Retired"`, `"Cancelled"`, `"Walk Over"`, `"Postponed"` or
+    /// `"Interrupted"` (an in-play suspension — the match is paused, not
+    /// over). `nil` means it completed normally OR the outcome was never
+    /// resolved; the feed does not distinguish those.
     public let eventStatus: String?
     /// Whether this is a doubles match.
     public let isDoubles: Bool
@@ -371,14 +404,20 @@ public struct Match: Decodable, Sendable {
     /// 1 or 2 on a completed match, derived from the final sets. `nil` while
     /// unfinished or indeterminate.
     public let winner: Int?
+    /// Which player retired or conceded the walkover, 1 or 2 — by the rules
+    /// of the sport, always the loser. Present only when ``eventStatus`` is
+    /// `"Retired"` or `"Walk Over"` and the winner is derivable.
+    public let withdrew: Int?
     /// The match-winner market, embedded at PRO and above.
     public let market: Market?
     /// The model analysis, embedded at ULTRA.
     public let analysis: Analysis?
 
     enum CodingKeys: String, CodingKey {
-        case id, tournament, surface, indoor, format, round, status
-        case players, score, winner, market, analysis
+        case id, tournament, tour, surface, indoor, format, round, status
+        case players, score, winner, withdrew, market, analysis
+        case tournamentId = "tournament_id"
+        case roundCode = "round_code"
         case eventStatus = "event_status"
         case isDoubles = "is_doubles"
         case scheduledTime = "scheduled_time"
@@ -388,10 +427,13 @@ public struct Match: Decodable, Sendable {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         id = try c.decodeIfPresent(Int64.self, forKey: .id) ?? 0
         tournament = try c.decodeIfPresent(String.self, forKey: .tournament) ?? ""
+        tour = (try c.decodeIfPresent(String.self, forKey: .tour)).flatMap { Tour(rawValue: $0) }
+        tournamentId = try c.decodeIfPresent(String.self, forKey: .tournamentId)
         surface = try c.decodeIfPresent(String.self, forKey: .surface)
         indoor = try c.decodeIfPresent(Bool.self, forKey: .indoor) ?? false
         format = try c.decodeIfPresent(String.self, forKey: .format)
         round = try c.decodeIfPresent(String.self, forKey: .round)
+        roundCode = try c.decodeIfPresent(String.self, forKey: .roundCode)
         status = try c.decodeIfPresent(MatchStatus.self, forKey: .status) ?? .unknown
         eventStatus = try c.decodeIfPresent(String.self, forKey: .eventStatus)
         isDoubles = try c.decodeIfPresent(Bool.self, forKey: .isDoubles) ?? false
@@ -399,6 +441,7 @@ public struct Match: Decodable, Sendable {
         players = try c.decodeIfPresent(Players.self, forKey: .players)
         score = try c.decodeIfPresent(Score.self, forKey: .score)
         winner = try c.decodeIfPresent(Int.self, forKey: .winner)
+        withdrew = try c.decodeIfPresent(Int.self, forKey: .withdrew)
         market = try c.decodeIfPresent(Market.self, forKey: .market)
         analysis = try c.decodeIfPresent(Analysis.self, forKey: .analysis)
     }
@@ -543,13 +586,16 @@ public struct MatchEvent: Decodable, Sendable {
 ///
 /// Fixtures are name-only: the players are not yet resolved to player
 /// records, so there are no ids or rankings here. Once a fixture goes live it
-/// appears through ``LiveTennisApiClient/listMatches(status:tour:limit:offset:)``
+/// appears through ``LiveTennisApiClient/listMatches(status:tour:players:country:from:to:limit:offset:)``
 /// as a ``Match`` with full ``Player`` objects.
 public struct Fixture: Decodable, Sendable {
     /// The fixture's identifier.
     public let id: Int64
     /// The calendar date of the fixture.
     public let eventDate: String?
+    /// The scheduled start (ISO 8601 UTC). `nil` until the order of play
+    /// assigns a time — a date-only fixture is a real state.
+    public let startTime: String?
     /// The record's OWN tour — opaque, **not** the ``Tour`` filter vocabulary
     /// (see ``Player/tour``).
     public let tour: String?
@@ -557,32 +603,85 @@ public struct Fixture: Decodable, Sendable {
     public let tournament: String?
     /// The round name.
     public let round: String?
+    /// The round in the controlled vocabulary (same as ``Match/roundCode``).
+    public let roundCode: String?
     /// The court surface.
     public let surface: String?
-    /// Player 1's name as printed on the calendar.
+    /// Player 1's name as printed on the calendar. Always present regardless
+    /// of whether the id resolved.
     public let player1Name: String?
     /// Player 2's name as printed on the calendar.
     public let player2Name: String?
+    /// Our player id, when the participant is in our roster (exact-key
+    /// resolution, never a name match). `nil` otherwise.
+    public let player1Id: Int64?
+    public let player2Id: Int64?
     /// The fixture's status.
     public let status: String?
 
     enum CodingKeys: String, CodingKey {
         case id, tour, tournament, round, surface, status
         case eventDate = "event_date"
+        case startTime = "start_time"
+        case roundCode = "round_code"
         case player1Name = "player1_name"
         case player2Name = "player2_name"
+        case player1Id = "player1_id"
+        case player2Id = "player2_id"
     }
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         id = try c.decodeIfPresent(Int64.self, forKey: .id) ?? 0
         eventDate = try c.decodeIfPresent(String.self, forKey: .eventDate)
+        startTime = try c.decodeIfPresent(String.self, forKey: .startTime)
         tour = try c.decodeIfPresent(String.self, forKey: .tour)
         tournament = try c.decodeIfPresent(String.self, forKey: .tournament)
         round = try c.decodeIfPresent(String.self, forKey: .round)
+        roundCode = try c.decodeIfPresent(String.self, forKey: .roundCode)
         surface = try c.decodeIfPresent(String.self, forKey: .surface)
         player1Name = try c.decodeIfPresent(String.self, forKey: .player1Name)
         player2Name = try c.decodeIfPresent(String.self, forKey: .player2Name)
+        player1Id = try c.decodeIfPresent(Int64.self, forKey: .player1Id)
+        player2Id = try c.decodeIfPresent(Int64.self, forKey: .player2Id)
         status = try c.decodeIfPresent(String.self, forKey: .status)
+    }
+}
+
+/// A tournament in the catalogue — the stable id space ``Match/tournamentId``
+/// joins. One row per tournament × event type, stable across seasons.
+public struct Tournament: Decodable, Sendable {
+    /// The stable id that ``Match/tournamentId`` carries.
+    public let id: String
+    public let name: String?
+    /// The ``Tour`` filter vocabulary, or `nil` (decoded leniently, like
+    /// ``Match/tour``).
+    public let tour: Tour?
+    /// `"hard"`, `"clay"` or `"grass"`.
+    public let surface: String?
+    public let indoor: Bool
+    /// Host city, from a curated table — `nil` where not curated.
+    public let city: String?
+    /// Host country, ISO-3166 alpha-2 — `nil` where not curated.
+    public let country: String?
+    /// Tournament category (`"grand_slam"`, `"masters_1000"`, `"atp_250"`,
+    /// `"wta_1000"`, …) where the catalogues agree unambiguously — `nil`
+    /// otherwise, never derived from the name.
+    public let category: String?
+
+    enum CodingKeys: String, CodingKey {
+        case id, name, tour, surface, indoor, city, country, category
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decodeIfPresent(String.self, forKey: .id) ?? ""
+        name = try c.decodeIfPresent(String.self, forKey: .name)
+        tour = (try c.decodeIfPresent(String.self, forKey: .tour)).flatMap { Tour(rawValue: $0) }
+        surface = try c.decodeIfPresent(String.self, forKey: .surface)
+        indoor = try c.decodeIfPresent(Bool.self, forKey: .indoor) ?? false
+        city = try c.decodeIfPresent(String.self, forKey: .city)
+        country = try c.decodeIfPresent(String.self, forKey: .country)
+        category = try c.decodeIfPresent(String.self, forKey: .category)
     }
 }

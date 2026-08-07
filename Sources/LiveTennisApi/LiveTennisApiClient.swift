@@ -75,7 +75,7 @@ public final class LiveTennisApiClient: @unchecked Sendable {
         authMethod: AuthMethod = .bearer,
         timeout: TimeInterval = 30,
         maxRetries: Int = 2,
-        userAgent: String = "livetennisapi-swift/1.0.0",
+        userAgent: String = "livetennisapi-swift/1.1.0",
         session: URLSession? = nil,
         onRateLimit: (@Sendable (RateLimit) -> Void)? = nil
     ) {
@@ -103,7 +103,9 @@ public final class LiveTennisApiClient: @unchecked Sendable {
         try await get("/health")
     }
 
-    /// Matches by lifecycle status, each with its latest score. FREE.
+    /// Matches by lifecycle status, each with its latest score. FREE —
+    /// except `status: .completed`, which needs **BASIC** (or any History
+    /// plan).
     ///
     /// A match that has not started carries `score == nil`.
     ///
@@ -112,18 +114,33 @@ public final class LiveTennisApiClient: @unchecked Sendable {
     ///   - tour: Restrict to one circuit, singles and doubles draws alike. An
     ///     unrecognised value would be a 400, which this enum makes
     ///     unrepresentable.
+    ///   - players: Keep only matches where any of these player ids is
+    ///     EITHER participant (deduplicated union). The API accepts at most
+    ///     50 ids, so only the first 50 are sent. An unknown id returns an
+    ///     empty list, not an error.
+    ///   - country: Keep matches where either participant's
+    ///     ``Player/country`` equals this lowercase 3-letter IOC-style code
+    ///     (`"ned"`, `"sui"` — NOT ISO-3166). Players with no recorded
+    ///     country never match.
+    ///   - from: Earliest play date, `YYYY-MM-DD` or ISO 8601 UTC datetime.
+    ///     A bare date is a UTC day boundary.
+    ///   - to: Latest play date (a bare date includes the whole UTC day);
+    ///     must not precede `from`.
     ///   - limit: Page size, 1 to ``maxLimit``.
     ///   - offset: Items to skip.
     public func listMatches(
         status: MatchStatus? = nil, tour: Tour? = nil,
+        players: [Int64]? = nil, country: String? = nil,
+        from: String? = nil, to: String? = nil,
         limit: Int? = nil, offset: Int? = nil
     ) async throws -> Page<Match> {
         try await get(
             "/matches",
             query: [
                 ("status", status?.rawValue), ("tour", tour?.rawValue),
+                ("country", country), ("from", from), ("to", to),
                 ("limit", clamp(limit)), ("offset", offset.map(String.init)),
-            ])
+            ] + repeated("player", ids: players))
     }
 
     /// One match in full. FREE, with `market` embedded from PRO and
@@ -188,19 +205,349 @@ public final class LiveTennisApiClient: @unchecked Sendable {
         try await get("/markets/\(matchId)/prices", query: [("limit", clamp(limit))])
     }
 
+    /// Bare price ticks of a match's mapped match-winner market, newest
+    /// first — no market wrapper. **PRO**.
+    ///
+    /// Throws ``LiveTennisApiError/notFound(_:)`` when the match has no
+    /// mapped market. There is no offset here: `meta.hasMore` means the
+    /// window was clipped at `limit` — raise it or narrow `minutes`.
+    ///
+    /// - Parameters:
+    ///   - limit: 1 to 500 (a larger value is clamped client-side; the
+    ///     API's default is 100). Note the cap differs from ``maxLimit``.
+    ///   - minutes: Bound the lookback window, 1 to 1440.
+    public func getMatchPrices(
+        matchId: Int64, limit: Int? = nil, minutes: Int? = nil
+    ) async throws -> Page<Price> {
+        try await get(
+            "/matches/\(matchId)/prices",
+            query: [
+                ("limit", limit.map { String(min($0, 500)) }),
+                ("minutes", minutes.map(String.init)),
+            ])
+    }
+
+    /// The tournament catalogue — the id space ``Match/tournamentId`` joins,
+    /// in name order. FREE.
+    ///
+    /// - Parameters:
+    ///   - search: Case-insensitive substring match on the tournament name.
+    ///   - tour: Restrict to one circuit.
+    public func listTournaments(
+        search: String? = nil, tour: Tour? = nil,
+        limit: Int? = nil, offset: Int? = nil
+    ) async throws -> Page<Tournament> {
+        try await get(
+            "/tournaments",
+            query: [
+                ("search", search), ("tour", tour?.rawValue),
+                ("limit", clamp(limit)), ("offset", offset.map(String.init)),
+            ])
+    }
+
+    /// One tournament by its stable id — the `tournamentId` carried on match
+    /// objects. FREE.
+    public func getTournament(_ tournamentId: String) async throws -> Tournament {
+        let encoded =
+            tournamentId.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed)
+            ?? tournamentId
+        return try await get("/tournaments/\(encoded)")
+    }
+
     /// Completed matches, newest first, each with `winner` derived from the
     /// final sets. **BASIC** — below that,
     /// ``LiveTennisApiError/upgradeRequired(_:requiredTier:)``.
+    ///
+    /// The filters behave exactly as on
+    /// ``listMatches(status:tour:players:country:from:to:limit:offset:)``.
     public func listCompletedMatches(
+        tour: Tour? = nil, players: [Int64]? = nil, country: String? = nil,
+        from: String? = nil, to: String? = nil,
         limit: Int? = nil, offset: Int? = nil
     ) async throws -> Page<Match> {
         try await get(
             "/history/matches",
+            query: [
+                ("tour", tour?.rawValue), ("country", country),
+                ("from", from), ("to", to),
+                ("limit", clamp(limit)), ("offset", offset.map(String.init)),
+            ] + repeated("player", ids: players))
+    }
+
+    /// A match's point-by-point tape: the chronological score sequence plus
+    /// per-point model probabilities where a model was watching. **BASIC**
+    /// (or any History plan).
+    ///
+    /// Works on a LIVE match, not only a completed one — the tape is
+    /// assembled from whatever has been committed so far. It is NOT
+    /// guaranteed to cover the whole match: check the returned `meta`
+    /// coverage before backtesting. ``TapeSequence/clean`` rows additionally
+    /// carry ``TapeRow/pointWinner``; the response also lists per-set
+    /// tiebreak final scores in ``HistoryTape/tiebreaks``.
+    public func getMatchTape(
+        _ matchId: Int64, sequence: TapeSequence? = nil
+    ) async throws -> HistoryTape {
+        try await get(
+            "/history/matches/\(matchId)", query: [("sequence", sequence?.rawValue)])
+    }
+
+    /// The head-to-head record between two players, assembled from the
+    /// results archive (1968–2022) and our own completed matches (2023
+    /// onward). **BASIC** (or any History plan).
+    ///
+    /// Names are the keys — archive people have no roster ids. A fragment
+    /// (min 3 chars) matching more than one player is refused with a 400
+    /// `ambiguous_name` carrying the candidate list, because two people
+    /// summed into one record is a wrong answer, not a convenience.
+    public func getHeadToHead(p1: String, p2: String) async throws -> HeadToHead {
+        try await get("/h2h", query: [("p1", p1), ("p2", p2)])
+    }
+
+    // MARK: - Results archive (1968–2022)
+
+    /// Deep historical results: ATP and WTA main draws, qualifying,
+    /// challengers and futures, 1968 through 2022, newest tournament first.
+    /// **BASIC** (or any History plan).
+    ///
+    /// A SEPARATE id space from `/matches` — archive people are identified
+    /// by name and corpus person id — and the archive ends where our own
+    /// point-by-point coverage begins (2023-01), so no match is ever served
+    /// from two datasets.
+    ///
+    /// - Parameters:
+    ///   - tour: `.atp` or `.wta` — the corpus holds nothing else.
+    ///   - name: Case-insensitive substring match on EITHER player's name
+    ///     (min 3 chars).
+    ///   - from: Earliest tournament START date, `YYYY-MM-DD` — the only
+    ///     date records of this era carry.
+    ///   - to: Latest tournament start date.
+    ///   - round: `"F"`, `"SF"`, `"QF"`, `"R16"` … `"Q1"`–`"Q4"`, `"ER"`.
+    ///   - level: Source tier code (G, M, A, F, D, C, O; futures carry their
+    ///     category codes).
+    public func listArchiveMatches(
+        tour: ArchiveTour? = nil, name: String? = nil,
+        from: String? = nil, to: String? = nil,
+        round: String? = nil, level: String? = nil,
+        limit: Int? = nil, offset: Int? = nil
+    ) async throws -> Page<ArchiveMatch> {
+        try await get(
+            "/history/archive/matches",
+            query: [
+                ("tour", tour?.rawValue), ("name", name), ("from", from), ("to", to),
+                ("round", round), ("level", level),
+                ("limit", clamp(limit)), ("offset", offset.map(String.init)),
+            ])
+    }
+
+    /// One archive result, with serve statistics where the source recorded
+    /// them — `stats` is `nil` for the (mostly pre-1991) rows it never did,
+    /// never synthesised. **BASIC** (or any History plan).
+    public func getArchiveMatch(_ archiveId: Int64) async throws -> ArchiveMatch {
+        try await get("/history/archive/matches/\(archiveId)")
+    }
+
+    /// Archive player bios — hand, date of birth, country, height and
+    /// career-high — ordered by name. **BASIC** (or any History plan).
+    /// The ids are corpus person ids, scoped per tour, never roster ids.
+    public func listArchivePlayers(
+        name: String? = nil, tour: ArchiveTour? = nil,
+        limit: Int? = nil, offset: Int? = nil
+    ) async throws -> Page<ArchivePlayerBio> {
+        try await get(
+            "/history/archive/players",
+            query: [
+                ("name", name), ("tour", tour?.rawValue),
+                ("limit", clamp(limit)), ("offset", offset.map(String.init)),
+            ])
+    }
+
+    /// One player's whole archive career in one response: W-L record
+    /// (overall, by surface, by level, by year), titles and summed serve
+    /// statistics. **BASIC** (or any History plan).
+    ///
+    /// `name` is a fragment (min 3 chars) that must resolve to one person;
+    /// an ambiguous fragment is refused with candidates, the same rule as
+    /// ``getHeadToHead(p1:p2:)``.
+    public func getArchiveCareer(name: String) async throws -> ArchiveCareer {
+        try await get("/history/archive/career", query: [("name", name)])
+    }
+
+    // MARK: - Bulk history packages
+
+    /// Pre-built monthly bulk packages, newest period first. **PRO** (or a
+    /// package subscription); `kind: .rankings` needs **ULTRA**.
+    ///
+    /// - Parameters:
+    ///   - kind: The package family; `nil` means the API's default (tape).
+    ///   - year: `YYYY` — list every published month of the year (History
+    ///     Business, a 1-year package, or ULTRA).
+    public func listHistoryPackages(
+        kind: PackageKind? = nil, year: String? = nil
+    ) async throws -> HistoryPackagesPage {
+        try await get(
+            "/history/packages", query: [("kind", kind?.rawValue), ("year", year)])
+    }
+
+    /// One monthly package's JSON manifest — file names, sizes and sha256
+    /// checksums. **PRO** (or a package subscription); `kind: .rankings`
+    /// needs **ULTRA**.
+    ///
+    /// - Parameter period: The month, `YYYY-MM`.
+    public func getHistoryPackage(
+        period: String, kind: PackageKind? = nil
+    ) async throws -> HistoryPackage {
+        try await get("/history/packages/\(period)", query: [("kind", kind?.rawValue)])
+    }
+
+    /// Download one monthly package file as raw bytes — JSONL (one tape
+    /// object per line) or CSV (one row per point). Same tiers as
+    /// ``getHistoryPackage(period:kind:)``.
+    ///
+    /// The bytes are returned verbatim; verify them against the manifest's
+    /// `sha256` if you store them.
+    public func downloadHistoryPackage(
+        period: String, kind: PackageKind? = nil, format: PackageFormat
+    ) async throws -> Data {
+        let (data, _) = try await requestData(
+            "GET", "/history/packages/\(period)",
+            query: [("kind", kind?.rawValue), ("format", format.rawValue)])
+        return data
+    }
+
+    // MARK: - Rankings
+
+    /// Point-in-time rankings, in two modes. WITHOUT `players` (**PRO**):
+    /// the FULL published table in rank order for exactly one system, the
+    /// newest week at or before `asOf`. WITH `players` (**ULTRA**): the
+    /// newest record per system effective ON OR BEFORE `asOf` for each
+    /// requested player — never one dated after it.
+    ///
+    /// Listing rows carry `playerName` as published and a `nil` `playerId`
+    /// for players outside our roster, so the table has no silent holes.
+    /// ``RankingSystem/utr`` has no listing mode (a rating, not a ranking).
+    /// Check the meta's ``RankingMeta/coverage`` before trusting an empty
+    /// result: ITF and UTR history begins 2026-07-29.
+    ///
+    /// - Parameters:
+    ///   - players: Player ids for per-player mode; at most 50 are sent.
+    ///     Omit for the listing mode, which then requires exactly one
+    ///     `system`.
+    ///   - asOf: `YYYY-MM-DD`. Omit for the latest known record.
+    ///   - systems: Restrict to one or more systems. Omit for all (per-player
+    ///     mode only).
+    public func listRankings(
+        players: [Int64]? = nil, asOf: String? = nil,
+        systems: [RankingSystem]? = nil,
+        limit: Int? = nil, offset: Int? = nil
+    ) async throws -> RankingsPage {
+        try await get(
+            "/rankings",
+            query: [
+                ("as_of", asOf),
+                ("limit", clamp(limit)), ("offset", offset.map(String.init)),
+            ] + repeated("player", ids: players)
+                + repeated("system", values: (systems ?? []).map(\.rawValue)))
+    }
+
+    // MARK: - Rally construction & charting (ULTRA)
+
+    /// Charted matches with shot-by-shot data, newest first. **ULTRA**.
+    ///
+    /// Rally construction is the layer below the tape: the tape says what
+    /// the score became after each point, this says how the point was
+    /// played. Its OWN id space — ask this endpoint for the authoritative
+    /// coverage list rather than assuming a match is charted: charting is
+    /// human work, so coverage is deep, not universal.
+    public func listRallyMatches(
+        player: String? = nil, from: String? = nil, to: String? = nil,
+        surface: String? = nil, gender: RallyGender? = nil,
+        limit: Int? = nil, offset: Int? = nil
+    ) async throws -> Page<RallyMatch> {
+        try await get(
+            "/rally/matches",
+            query: [
+                ("player", player), ("from", from), ("to", to),
+                ("surface", surface), ("gender", gender?.rawValue),
+                ("limit", clamp(limit)), ("offset", offset.map(String.init)),
+            ])
+    }
+
+    /// Rally construction for one charted match, points in play order.
+    /// **ULTRA**. Paged with `limit`/`offset`; the returned `meta.total` is
+    /// the match's full point count.
+    public func getRallyMatch(
+        _ rallyMatchId: Int64, limit: Int? = nil, offset: Int? = nil
+    ) async throws -> RallyTape {
+        try await get(
+            "/rally/matches/\(rallyMatchId)",
             query: [("limit", clamp(limit)), ("offset", offset.map(String.init))])
     }
 
+    /// Rally construction addressed by OUR match id, resolved through the
+    /// optional link. **ULTRA**.
+    ///
+    /// Answers 404 `not_charted` when we hold the match but nobody charted
+    /// it — deliberately distinct from "no such match", because most of our
+    /// matches are not charted and a consumer walking the archive must tell
+    /// them apart. Branch on ``LiveTennisApiError/errorCode``.
+    public func getMatchRally(
+        matchId: Int64, limit: Int? = nil, offset: Int? = nil
+    ) async throws -> RallyTape {
+        try await get(
+            "/history/matches/\(matchId)/rally",
+            query: [("limit", clamp(limit)), ("offset", offset.map(String.init))])
+    }
+
+    /// A player's career shot-level charting aggregate — serve placement,
+    /// return depth, net play, clutch serving, winners and errors by wing,
+    /// rally-length tendencies — summed over their charted matches.
+    /// **ULTRA**.
+    ///
+    /// `name` (min 3 chars) must resolve to one charted person; an ambiguous
+    /// fragment is refused with candidates, and `gender` disambiguates.
+    public func getChartingPlayer(
+        name: String, gender: ChartingGender? = nil
+    ) async throws -> ChartingPlayer {
+        try await get(
+            "/charting/players", query: [("name", name), ("gender", gender?.rawValue)])
+    }
+
+    /// One charted match, every stat family for both players, with the
+    /// per-set split exactly as charted. **ULTRA**. `chartingMatchId` is
+    /// this product's own id space.
+    public func getChartingMatch(_ chartingMatchId: Int64) async throws -> ChartingMatch {
+        try await get("/charting/matches/\(chartingMatchId)")
+    }
+
+    // MARK: - In-play statistics & push feed (ULTRA)
+
+    /// In-play statistics for one match — aces, double faults, serve split,
+    /// hold/break percentages, break points, service and return points.
+    /// **ULTRA**.
+    ///
+    /// Two families that are deliberately not merged: DERIVED (rebuilt from
+    /// the point-by-point record) and MEASURED (counted upstream — the only
+    /// source of aces and double faults). Read the per-family `freshness`
+    /// before trusting either, and never compare their ages: they use
+    /// different clocks. "We hold nothing" is a 200 with `players == nil`,
+    /// not a 404.
+    public func getMatchStatistics(_ matchId: Int64) async throws -> MatchStatistics {
+        try await get("/matches/\(matchId)/statistics")
+    }
+
+    /// Mint a short-lived connection token for the high-fan-out push
+    /// WebSocket. **ULTRA**.
+    ///
+    /// The response carries the socket URL and the channel vocabulary —
+    /// `match:{id}` per-match streams and `slate:all` for every live score
+    /// frame. Frames are the same allowlist score objects the polling
+    /// endpoints return. Mint a fresh token on every reconnect.
+    public func getWsToken() async throws -> WsToken {
+        try await get("/ws-token")
+    }
+
     /// Upcoming scheduled fixtures, earliest first. FREE. Fixtures are
-    /// name-only; use ``listMatches(status:tour:limit:offset:)`` with
+    /// name-only; use ``listMatches(status:tour:players:country:from:to:limit:offset:)`` with
     /// `.upcoming` when you need player ids.
     public func listFixtures(
         tour: Tour? = nil, limit: Int? = nil, offset: Int? = nil
@@ -213,15 +560,105 @@ public final class LiveTennisApiClient: @unchecked Sendable {
             ])
     }
 
+    // MARK: - Account: usage & webhooks
+
+    /// Your own usage vs quota: tier, limits, today's calls (current to the
+    /// second) and a 30-day history. Any tier, and QUOTA-EXEMPT — polling it
+    /// never consumes the budget it reports.
+    ///
+    /// The per-minute window is on the `X-RateLimit-*` headers of every
+    /// response (see `onRateLimit:`), not here.
+    public func getUsage() async throws -> Usage {
+        try await get("/usage")
+    }
+
+    /// Register an outbound webhook: the API POSTs the same frames the
+    /// WebSocket pushes to your HTTPS endpoint on every live score commit.
+    /// **ULTRA, direct keys only** — on a RapidAPI-issued key this is a 403
+    /// with code `direct_key_required`.
+    ///
+    /// The response is the ONLY time the signing ``Webhook/secret`` is shown
+    /// — store it. At most 3 webhooks per key: a fourth registration throws
+    /// ``LiveTennisApiError/conflict(_:)`` (code `webhook_limit`); delete
+    /// one first. This request is a POST and is never auto-retried.
+    ///
+    /// - Parameters:
+    ///   - url: Your endpoint — HTTPS only, publicly routable.
+    ///   - events: The event families to deliver; `nil` means the API's
+    ///     default (score only).
+    public func createWebhook(
+        url: String, events: [WebhookEvent]? = nil
+    ) async throws -> Webhook {
+        try await request(
+            "POST", "/webhooks",
+            body: Self.webhookRegistrationBody(url: url, events: events))
+    }
+
+    /// List your webhooks. **ULTRA, direct keys only**. The signing secret
+    /// is never included here — it is shown once, at registration.
+    public func listWebhooks() async throws -> Page<Webhook> {
+        try await get("/webhooks")
+    }
+
+    /// Remove one of your webhooks. **ULTRA, direct keys only**.
+    public func deleteWebhook(_ webhookId: Int64) async throws -> WebhookDeletion {
+        try await request("DELETE", "/webhooks/\(webhookId)")
+    }
+
+    /// The JSON body of a webhook registration. Internal so the encoding is
+    /// testable without a network round-trip.
+    static func webhookRegistrationBody(url: String, events: [WebhookEvent]?) -> Data {
+        struct Registration: Encodable {
+            let url: String
+            let events: [String]?
+        }
+        // Encoding a two-field struct cannot fail; a crash here would be a
+        // programming error, not a runtime condition.
+        return try! JSONEncoder().encode(
+            Registration(url: url, events: events?.map(\.rawValue)))
+    }
+
     // MARK: - Transport
 
     private func clamp(_ limit: Int?) -> String? {
         limit.map { String(min($0, Self.maxLimit)) }
     }
 
+    /// A repeatable query parameter. The API accepts at most 50 `player`
+    /// ids, so the excess is dropped client-side rather than earning a 400.
+    private func repeated(_ name: String, ids: [Int64]?) -> [(String, String?)] {
+        (ids ?? []).prefix(50).map { id in (name, Optional(String(id))) }
+    }
+
+    private func repeated(_ name: String, values: [String]) -> [(String, String?)] {
+        values.map { value in (name, Optional(value)) }
+    }
+
     private func get<T: Decodable>(
         _ path: String, query: [(String, String?)] = []
     ) async throws -> T {
+        try await request("GET", path, query: query)
+    }
+
+    private func request<T: Decodable>(
+        _ method: String, _ path: String, query: [(String, String?)] = [],
+        body: Data? = nil
+    ) async throws -> T {
+        let (data, urlString) = try await requestData(method, path, query: query, body: body)
+        do {
+            return try decoder.decode(T.self, from: data)
+        } catch {
+            throw LiveTennisApiError.decoding(url: urlString, underlying: error)
+        }
+    }
+
+    /// The transport loop, returning the raw 2xx body. Retries apply to
+    /// IDEMPOTENT methods only (GET, DELETE): a POST that timed out may have
+    /// been processed, and replaying it could create a duplicate resource.
+    private func requestData(
+        _ method: String, _ path: String, query: [(String, String?)] = [],
+        body requestBody: Data? = nil
+    ) async throws -> (Data, String) {
         var components = URLComponents(string: baseURL + path)!
         let items = query.compactMap { name, value in
             value.map { URLQueryItem(name: name, value: $0) }
@@ -230,8 +667,13 @@ public final class LiveTennisApiClient: @unchecked Sendable {
         let url = components.url!
 
         var request = URLRequest(url: url)
+        request.httpMethod = method
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.setValue(userAgent, forHTTPHeaderField: "User-Agent")
+        if let requestBody {
+            request.httpBody = requestBody
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        }
         if !apiKey.isEmpty {
             switch authMethod {
             case .bearer:
@@ -241,6 +683,7 @@ public final class LiveTennisApiClient: @unchecked Sendable {
             }
         }
 
+        let idempotent = method == "GET" || method == "DELETE"
         var attempt = 0
         while true {
             let data: Data
@@ -257,7 +700,7 @@ public final class LiveTennisApiClient: @unchecked Sendable {
             } catch let error as LiveTennisApiError {
                 throw error
             } catch {
-                if attempt >= maxRetries {
+                if attempt >= maxRetries || !idempotent {
                     if (error as? URLError)?.code == .timedOut {
                         throw LiveTennisApiError.timeout(
                             url: url.absoluteString, underlying: error)
@@ -274,7 +717,11 @@ public final class LiveTennisApiClient: @unchecked Sendable {
             onRateLimit?(rateLimit)
 
             let status = response.statusCode
-            if (status == 429 || status >= 500) && attempt < maxRetries {
+            // An abuse_throttled 429 is a long block, not a window — retrying
+            // it cannot succeed and is exactly the behaviour that earned it.
+            if (status == 429 || status >= 500) && attempt < maxRetries && idempotent
+                && !LiveTennisApiError.isAbuseThrottled(status: status, body: data)
+            {
                 try await sleep(backoff(attempt: attempt, retryAfter: rateLimit.retryAfter))
                 attempt += 1
                 continue
@@ -282,15 +729,11 @@ public final class LiveTennisApiClient: @unchecked Sendable {
 
             guard (200..<300).contains(status) else {
                 throw LiveTennisApiError.forStatus(
-                    status, path: path, url: url.absoluteString,
+                    status, path: path, query: query, url: url.absoluteString,
                     rateLimit: rateLimit, body: data)
             }
 
-            do {
-                return try decoder.decode(T.self, from: data)
-            } catch {
-                throw LiveTennisApiError.decoding(url: url.absoluteString, underlying: error)
-            }
+            return (data, url.absoluteString)
         }
     }
 
