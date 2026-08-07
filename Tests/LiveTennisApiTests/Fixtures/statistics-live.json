@@ -1,0 +1,84 @@
+{
+  "match_id": 22313,
+  "coverage": "live",
+  "as_of": "2026-08-07T14:03:21Z",
+  "age_seconds": 0,
+  "games_counted": 17,
+  "tiebreak_games_excluded": 1,
+  "inconsistent_games_excluded": 0,
+  "sets_covered": [1, 2],
+  "freshness": {
+    "measured_divergence": null,
+    "derived": {
+      "coverage": "live",
+      "as_of": "2026-08-07T14:03:21Z",
+      "age_seconds": 0,
+      "describes": {"games_p1": [6, 2], "games_p2": [4, 2], "total_games": 14}
+    },
+    "measured": {
+      "coverage": "live",
+      "as_of": "2026-08-07T14:02:50Z",
+      "age_seconds": 31,
+      "describes": null
+    }
+  },
+  "players": {
+    "p1": {
+      "measured": {
+        "aces": 7,
+        "double_faults": 2,
+        "first_serves_in": 33,
+        "first_serves_in_of": 52,
+        "first_serves_in_pct": 63,
+        "winners_total": 18
+      },
+      "service_games_played": 9,
+      "service_games_won": 8,
+      "hold_pct": 89,
+      "return_games_played": 8,
+      "return_games_won": 2,
+      "break_pct": 25,
+      "break_points_faced": 3,
+      "break_points_saved": 2,
+      "break_points_saved_pct": 67,
+      "break_points_played": 5,
+      "break_points_converted": 2,
+      "break_points_converted_pct": 40,
+      "service_points_played": 52,
+      "service_points_won": 36,
+      "service_points_won_pct": 69,
+      "return_points_played": 49,
+      "return_points_won": 20,
+      "return_points_won_pct": 41,
+      "points_played": 101,
+      "points_won": 56
+    },
+    "p2": {
+      "measured": {
+        "aces": 3,
+        "double_faults": 4,
+        "points_won": 45
+      },
+      "service_games_played": 8,
+      "service_games_won": 6,
+      "hold_pct": 75,
+      "return_games_played": 9,
+      "return_games_won": 1,
+      "break_pct": 11,
+      "break_points_faced": 5,
+      "break_points_saved": 3,
+      "break_points_saved_pct": 60,
+      "break_points_played": 3,
+      "break_points_converted": 1,
+      "break_points_converted_pct": 33,
+      "service_points_played": 49,
+      "service_points_won": 29,
+      "service_points_won_pct": 59,
+      "return_points_played": 52,
+      "return_points_won": 16,
+      "return_points_won_pct": 31,
+      "points_played": 101,
+      "points_won": 45
+    }
+  }
+}

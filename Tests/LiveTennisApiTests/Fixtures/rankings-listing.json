@@ -1,0 +1,45 @@
+{
+  "data": [
+    {
+      "player_id": 1204,
+      "player_name": "Jannik Sinner",
+      "system": "atp",
+      "tour": "atp",
+      "rank": 1,
+      "points": 11480,
+      "previous_rank": 1,
+      "rank_movement": null,
+      "rating": null,
+      "effective_date": "2026-08-03",
+      "observed_at": "2026-08-03T00:15:00Z"
+    },
+    {
+      "player_id": null,
+      "player_name": "Unrostered Player",
+      "system": "atp",
+      "tour": "atp",
+      "rank": 2,
+      "points": 9860,
+      "previous_rank": 3,
+      "rank_movement": null,
+      "rating": null,
+      "effective_date": "2026-08-03",
+      "observed_at": "2026-08-03T00:15:00Z"
+    }
+  ],
+  "meta": {
+    "limit": 50,
+    "offset": 0,
+    "count": 2,
+    "total": 2000,
+    "has_more": true,
+    "coverage": {
+      "as_of": "2026-08-03",
+      "players_requested": 0,
+      "players_resolved": 0,
+      "systems_requested": ["atp"],
+      "systems_resolved": ["atp"],
+      "oldest_available": {"atp": "1973-08-23"}
+    }
+  }
+}

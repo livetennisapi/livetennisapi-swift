@@ -1,0 +1,74 @@
+{
+  "match": {
+    "id": 22313,
+    "tournament": "ATP Cincinnati Open",
+    "tour": "atp",
+    "tournament_id": "atp-cincinnati-open",
+    "surface": "hard",
+    "indoor": false,
+    "format": "BO3",
+    "round": "Quarterfinal",
+    "round_code": "QF",
+    "status": "completed",
+    "event_status": null,
+    "is_doubles": false,
+    "winner": 1,
+    "withdrew": null
+  },
+  "tape": [
+    {
+      "sets": [0, 0],
+      "games": [[0], [0]],
+      "points": ["0", "0"],
+      "server": 1,
+      "is_tiebreak": false,
+      "win_probability_p1": 0.55,
+      "danger": null,
+      "timestamp": "2026-08-01T17:00:05Z",
+      "point_winner": null
+    },
+    {
+      "sets": [0, 0],
+      "games": [[0], [0]],
+      "points": ["15", "0"],
+      "server": 1,
+      "is_tiebreak": false,
+      "win_probability_p1": 0.56,
+      "danger": null,
+      "timestamp": "2026-08-01T17:00:41Z",
+      "point_winner": 1
+    },
+    {
+      "sets": [0, 0],
+      "games": [[1], [0]],
+      "points": [null, null],
+      "server": null,
+      "is_tiebreak": false,
+      "win_probability_p1": null,
+      "danger": null,
+      "timestamp": null,
+      "point_winner": null
+    }
+  ],
+  "tiebreaks": [{"p1": 7, "p2": 5}, null],
+  "profiles": [
+    {
+      "win_probability_p1": 0.55,
+      "expected_closeness": 0.7,
+      "volatility_rating": "med",
+      "key_factors": ["serve dominance"],
+      "created_at": "2026-08-01T16:00:00Z"
+    }
+  ],
+  "meta": {
+    "match_id": 22313,
+    "rows": 3,
+    "coverage": "from_start",
+    "point_source": "observed",
+    "raw_rows": 5,
+    "unique_states": 3,
+    "sequence": "clean",
+    "from_archive": false,
+    "generated_at": "2026-08-07T10:00:00Z"
+  }
+}

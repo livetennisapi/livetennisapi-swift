@@ -1,0 +1,40 @@
+{
+  "players": {
+    "p1": {"name": "Novak Djokovic"},
+    "p2": {"name": "Rafael Nadal"}
+  },
+  "totals": {"p1_wins": 30, "p2_wins": 29, "meetings": 60, "undecided": 1},
+  "by_surface": {
+    "hard": {"p1": 20, "p2": 7},
+    "clay": {"p1": 9, "p2": 20},
+    "grass": {"p1": 1, "p2": 2},
+    "unknown": {"p1": 0, "p2": 0}
+  },
+  "meetings": [
+    {
+      "era": "current",
+      "date": "2024-07-29",
+      "tournament": "Olympics",
+      "level": null,
+      "round": "Round of 64",
+      "round_code": "R64",
+      "surface": "clay",
+      "score": null,
+      "outcome": "completed",
+      "winner": 1,
+      "match_id": 18321
+    },
+    {
+      "era": "archive",
+      "date": "2022-05-31",
+      "tournament": "Roland Garros",
+      "level": "G",
+      "round": "QF",
+      "surface": "clay",
+      "score": "6-2 4-6 6-2 7-6(4)",
+      "outcome": "completed",
+      "winner": 2,
+      "archive_match_id": 501223
+    }
+  ]
+}

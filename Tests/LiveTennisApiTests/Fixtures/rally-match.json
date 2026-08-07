@@ -1,0 +1,72 @@
+{
+  "rally_match_id": 9012,
+  "source_id": "20240714-M-Wimbledon-F",
+  "match_id": null,
+  "date": "2024-07-14",
+  "tournament": "Wimbledon",
+  "round": "F",
+  "surface": "grass",
+  "gender": "M",
+  "best_of": 5,
+  "players": [
+    {"name": "Carlos Alcaraz", "hand": "R"},
+    {"name": "Novak Djokovic", "hand": "R"}
+  ],
+  "points": 214,
+  "points_parsed": 209,
+  "meta": {"limit": 2, "offset": 0, "count": 2, "total": 214, "has_more": true},
+  "rally": [
+    {
+      "point": 1,
+      "set": [0, 0],
+      "games": [0, 0],
+      "score": "0-0",
+      "game": 1,
+      "is_tiebreak": false,
+      "server": 1,
+      "point_winner": 2,
+      "raw": "4f8b@",
+      "parsed": true,
+      "serve_number": 1,
+      "serve_direction": "wide",
+      "rally_length": 3,
+      "outcome": "unforced_error",
+      "error_location": "wide",
+      "ending_stroke": "groundstroke",
+      "ending_wing": "backhand",
+      "is_ace": false,
+      "is_double_fault": false,
+      "is_serve_and_volley": false,
+      "shots": [
+        {"number": 1, "code": "4", "stroke": "serve", "wing": null, "direction": null, "depth": null, "position": null},
+        {"number": 2, "code": "f", "stroke": "groundstroke", "wing": "forehand", "direction": "backhand_side", "depth": "deep", "position": "baseline"},
+        {"number": 3, "code": "b", "stroke": "groundstroke", "wing": "backhand", "direction": "middle", "depth": null, "position": "baseline"}
+      ]
+    },
+    {
+      "point": 2,
+      "set": [0, 0],
+      "games": [0, 0],
+      "score": "0-15",
+      "game": 1,
+      "is_tiebreak": false,
+      "server": 1,
+      "point_winner": 1,
+      "raw": "5*",
+      "parsed": true,
+      "serve_number": 1,
+      "serve_direction": "body",
+      "rally_length": 1,
+      "outcome": "winner",
+      "error_location": null,
+      "ending_stroke": "serve",
+      "ending_wing": null,
+      "is_ace": true,
+      "is_double_fault": false,
+      "is_serve_and_volley": false,
+      "shots": [
+        {"number": 1, "code": "5", "stroke": "serve", "wing": null, "direction": null, "depth": null, "position": null}
+      ]
+    }
+  ]
+}
