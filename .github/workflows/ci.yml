@@ -15,4 +15,6 @@ jobs:
     container: swift:6.0
     steps:
       - uses: actions/checkout@v7
+      - name: truthcheck
+        run: sh scripts/truthcheck.sh
       - run: swift test
