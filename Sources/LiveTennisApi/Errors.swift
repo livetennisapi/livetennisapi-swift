@@ -44,9 +44,11 @@ func requiredTier(forPath path: String, query: [(String, String?)] = []) -> Tier
     if path.contains("/rankings") {
         return query.contains { $0.0 == "player" } ? .ultra : .pro
     }
-    // /history/packages: tape packages are PRO; rankings packages are ULTRA.
+    // /history/packages: tape packages are PRO, and the archive kind rides
+    // the same entitlement; rankings and rally packages are ULTRA.
     if path.contains("/history/packages") {
-        return query.contains { $0.0 == "kind" && $0.1 == "rankings" } ? .ultra : .pro
+        return query.contains { $0.0 == "kind" && ($0.1 == "rankings" || $0.1 == "rally") }
+            ? .ultra : .pro
     }
     let requirements: [(marker: String, tier: Tier)] = [
         ("/analysis", .ultra),

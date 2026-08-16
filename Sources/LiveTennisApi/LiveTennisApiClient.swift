@@ -75,7 +75,7 @@ public final class LiveTennisApiClient: @unchecked Sendable {
         authMethod: AuthMethod = .bearer,
         timeout: TimeInterval = 30,
         maxRetries: Int = 2,
-        userAgent: String = "livetennisapi-swift/1.1.0",
+        userAgent: String = "livetennisapi-swift/1.1.1",
         session: URLSession? = nil,
         onRateLimit: (@Sendable (RateLimit) -> Void)? = nil
     ) {
@@ -375,10 +375,13 @@ public final class LiveTennisApiClient: @unchecked Sendable {
     // MARK: - Bulk history packages
 
     /// Pre-built monthly bulk packages, newest period first. **PRO** (or a
-    /// package subscription); `kind: .rankings` needs **ULTRA**.
+    /// package subscription); `kind: .rankings` and `kind: .rally` need
+    /// **ULTRA**, while `kind: .archive` rides the tape entitlement.
     ///
     /// - Parameters:
     ///   - kind: The package family; `nil` means the API's default (tape).
+    ///     The yearly kinds (`.rally`, `.archive`) list bare-year periods
+    ///     (`YYYY`), one file per year.
     ///   - year: `YYYY` — list every published month of the year (History
     ///     Business, a 1-year package, or ULTRA).
     public func listHistoryPackages(
@@ -388,18 +391,21 @@ public final class LiveTennisApiClient: @unchecked Sendable {
             "/history/packages", query: [("kind", kind?.rawValue), ("year", year)])
     }
 
-    /// One monthly package's JSON manifest — file names, sizes and sha256
-    /// checksums. **PRO** (or a package subscription); `kind: .rankings`
-    /// needs **ULTRA**.
+    /// One package's JSON manifest — file names, sizes and sha256
+    /// checksums. **PRO** (or a package subscription); `kind: .rankings` and
+    /// `kind: .rally` need **ULTRA**, while `kind: .archive` rides the tape
+    /// entitlement.
     ///
-    /// - Parameter period: The month, `YYYY-MM`.
+    /// - Parameter period: The month, `YYYY-MM` — except for the yearly
+    ///   kinds (`.rally`, `.archive`), where it is the bare year, `YYYY`
+    ///   (`400 bad_period` otherwise).
     public func getHistoryPackage(
         period: String, kind: PackageKind? = nil
     ) async throws -> HistoryPackage {
         try await get("/history/packages/\(period)", query: [("kind", kind?.rawValue)])
     }
 
-    /// Download one monthly package file as raw bytes — JSONL (one tape
+    /// Download one package file as raw bytes — JSONL (one tape
     /// object per line) or CSV (one row per point). Same tiers as
     /// ``getHistoryPackage(period:kind:)``.
     ///

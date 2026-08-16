@@ -24,7 +24,7 @@ Challenger, ITF and juniors.
 Add to your `Package.swift`:
 
 ```swift
-.package(url: "https://github.com/livetennisapi/livetennisapi-swift.git", from: "1.1.0")
+.package(url: "https://github.com/livetennisapi/livetennisapi-swift.git", from: "1.1.1")
 ```
 
 **Zero dependencies.** `URLSession` + `Codable` only (with `FoundationNetworking`
@@ -73,8 +73,8 @@ Access is tiered (FREE / BASIC / PRO / ULTRA). A call above your tier throws
 | `listMarkets(…)` / `getMarketPrices(…)` | `/markets`, `/markets/{id}/prices` | PRO |
 | `getMatchPrices(matchId:…)` | `/matches/{id}/prices` | PRO |
 | `listRankings(…)` | `/rankings` | PRO listing · ULTRA per-player |
-| `listHistoryPackages(kind:year:)` | `/history/packages` | PRO (`kind: .rankings` ULTRA) |
-| `getHistoryPackage(period:…)` / `downloadHistoryPackage(…)` | `/history/packages/{period}` | PRO (`kind: .rankings` ULTRA) |
+| `listHistoryPackages(kind:year:)` | `/history/packages` | PRO (`.rankings`/`.rally` ULTRA; `.archive` = tape) |
+| `getHistoryPackage(period:…)` / `downloadHistoryPackage(…)` | `/history/packages/{period}` | PRO (`.rankings`/`.rally` ULTRA; `.archive` = tape) |
 | `getMatchAnalysis(_:)` | `/matches/{id}/analysis` | ULTRA |
 | `getMatchStatistics(_:)` | `/matches/{id}/statistics` | ULTRA |
 | `listRallyMatches(…)` / `getRallyMatch(_:…)` | `/rally/matches` | ULTRA |

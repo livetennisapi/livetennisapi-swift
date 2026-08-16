@@ -337,6 +337,11 @@ final class LiveTennisApiClientTests: XCTestCase {
         XCTAssertEqual(requiredTier(forPath: "/history/packages"), .pro)
         XCTAssertEqual(
             requiredTier(forPath: "/history/packages", query: [("kind", "rankings")]), .ultra)
+        XCTAssertEqual(
+            requiredTier(forPath: "/history/packages", query: [("kind", "rally")]), .ultra)
+        // The archive kind rides the tape entitlement, not ULTRA.
+        XCTAssertEqual(
+            requiredTier(forPath: "/history/packages", query: [("kind", "archive")]), .pro)
     }
 
     func testTiersAreOrdered() {
@@ -540,6 +545,47 @@ final class LiveTennisApiClientTests: XCTestCase {
         XCTAssertEqual(page.data.first?.kind, "rankings")
         XCTAssertEqual(page.data.first?.files.first?.format, "jsonl")
         XCTAssertEqual(page.meta?.year, "2019")
+    }
+
+    func testPackageKindCoversTheContractVocabulary() {
+        XCTAssertEqual(
+            PackageKind.allCases.map(\.rawValue), ["tape", "rankings", "rally", "archive"])
+    }
+
+    func testHistoryPackagesYearlyKindSendsKindAndDecodesBareYearPeriod() async throws {
+        let json = """
+            {"data": [{"period": "2001", "status": "ready", "match_count": 3820, \
+            "row_count": 3820, "files": [{"format": "jsonl", \
+            "filename": "archive-2001.jsonl.gz", "bytes": 52428800, \
+            "sha256": "cafef00d"}], "built_at": "2026-08-01T00:00:00Z", \
+            "kind": "archive"}], "meta": {"count": 1}}
+            """
+        respond(body: Data(json.utf8))
+
+        let page = try await makeClient().listHistoryPackages(kind: .archive)
+        XCTAssertEqual(try sentQueryValue("kind"), "archive")
+        XCTAssertEqual(page.data.first?.period, "2001")
+        XCTAssertEqual(page.data.first?.kind, "archive")
+        XCTAssertEqual(page.data.first?.files.first?.filename, "archive-2001.jsonl.gz")
+    }
+
+    func testHistoryPackageManifestForRallyKindUsesBareYearPeriod() async throws {
+        let json = """
+            {"period": "2019", "status": "ready", "match_count": 410, \
+            "row_count": 61234, "files": [{"format": "csv", \
+            "filename": "rally-2019.csv.gz", "bytes": 10485760, \
+            "sha256": "feedface"}], "built_at": "2026-08-01T00:00:00Z", \
+            "kind": "rally"}
+            """
+        respond(body: Data(json.utf8))
+
+        let manifest = try await makeClient().getHistoryPackage(period: "2019", kind: .rally)
+        let request = try XCTUnwrap(StubURLProtocol.requests.first)
+        XCTAssertEqual(request.url?.path, "/api/public/v1/history/packages/2019")
+        XCTAssertEqual(try sentQueryValue("kind"), "rally")
+        XCTAssertEqual(manifest.period, "2019")
+        XCTAssertEqual(manifest.kind, "rally")
+        XCTAssertEqual(manifest.files.first?.format, "csv")
     }
 
     // MARK: - Rankings (1.1.0)

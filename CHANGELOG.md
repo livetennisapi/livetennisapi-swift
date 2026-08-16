@@ -4,6 +4,24 @@ All notable changes to this package are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org).
 
+## [1.1.1] - 2026-08-16
+
+### Added
+
+- `PackageKind` gains the two missing package families from the OpenAPI
+  contract: `rally` (the charted rally corpus as yearly `YYYY` exports,
+  ULTRA) and `archive` (the 1968–2022 results archive as yearly `YYYY`
+  exports, same entitlement as the tape packages — not ULTRA). Additive:
+  `tape` and `rankings` are unchanged.
+
+### Changed
+
+- Tier inference for `/history/packages` now names ULTRA for `kind=rally`
+  too (previously only `kind=rankings`); `kind=archive` correctly stays on
+  the tape (PRO) entitlement.
+- Package docs (client methods, `HistoryPackage.period`/`kind`, README
+  endpoint table) state the yearly-period rule for the new kinds.
+
 ## [1.1.0] - 2026-08-07
 
 ### Added

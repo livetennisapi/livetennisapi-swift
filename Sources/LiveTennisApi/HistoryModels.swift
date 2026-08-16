@@ -587,6 +587,13 @@ public enum PackageKind: String, Sendable, CaseIterable {
     case tape
     /// As-of ranking records. **ULTRA**.
     case rankings
+    /// The charted rally corpus (shot-by-shot) as YEARLY exports — the
+    /// `period` is the bare year, `YYYY`, one file per year, because a fixed
+    /// historical corpus is not an accruing monthly stream. **ULTRA**.
+    case rally
+    /// The results archive (1968–2022) as YEARLY exports (`period` is
+    /// `YYYY`). Same entitlement as the tape packages — **not** ULTRA.
+    case archive
 }
 
 /// A downloadable file format of a package. `jsonl` holds ONE LINE PER MATCH
@@ -609,7 +616,8 @@ public struct PackageFile: Decodable, Sendable {
 /// months and is still being extended backwards, so treat the listing as the
 /// authoritative set of months that exist.
 public struct HistoryPackage: Decodable, Sendable {
-    /// The month, `YYYY-MM`.
+    /// The month, `YYYY-MM` — except for the yearly kinds (`rally`,
+    /// `archive`), where it is the bare year, `YYYY`.
     public let period: String
     /// Only built months are listed, so this is `"ready"`.
     public let status: String?
@@ -619,7 +627,8 @@ public struct HistoryPackage: Decodable, Sendable {
     public let rowCount: Int?
     public let files: [PackageFile]
     public let builtAt: String?
-    /// Present only on non-tape packages (`"rankings"`).
+    /// Present only on non-tape packages (`"rankings"`, `"rally"`,
+    /// `"archive"`).
     public let kind: String?
 
     enum CodingKeys: String, CodingKey {
