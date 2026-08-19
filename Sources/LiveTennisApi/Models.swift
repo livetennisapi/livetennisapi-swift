@@ -392,6 +392,12 @@ public struct Match: Decodable, Sendable {
     /// over). `nil` means it completed normally OR the outcome was never
     /// resolved; the feed does not distinguish those.
     public let eventStatus: String?
+    /// The instant the current ``eventStatus`` was recorded (ISO 8601 UTC,
+    /// added 2026-08-19). Bumps only when the value changes — a re-read of
+    /// the same status never moves it — and a clear back to `nil` bumps it
+    /// too. `nil` while the status has never changed since the field was
+    /// introduced: never backfilled, never guessed.
+    public let eventStatusUpdatedAt: String?
     /// Whether this is a doubles match.
     public let isDoubles: Bool
     /// The scheduled start (ISO 8601 UTC).
@@ -419,6 +425,7 @@ public struct Match: Decodable, Sendable {
         case tournamentId = "tournament_id"
         case roundCode = "round_code"
         case eventStatus = "event_status"
+        case eventStatusUpdatedAt = "event_status_updated_at"
         case isDoubles = "is_doubles"
         case scheduledTime = "scheduled_time"
     }
@@ -436,6 +443,7 @@ public struct Match: Decodable, Sendable {
         roundCode = try c.decodeIfPresent(String.self, forKey: .roundCode)
         status = try c.decodeIfPresent(MatchStatus.self, forKey: .status) ?? .unknown
         eventStatus = try c.decodeIfPresent(String.self, forKey: .eventStatus)
+        eventStatusUpdatedAt = try c.decodeIfPresent(String.self, forKey: .eventStatusUpdatedAt)
         isDoubles = try c.decodeIfPresent(Bool.self, forKey: .isDoubles) ?? false
         scheduledTime = try c.decodeIfPresent(String.self, forKey: .scheduledTime)
         players = try c.decodeIfPresent(Players.self, forKey: .players)

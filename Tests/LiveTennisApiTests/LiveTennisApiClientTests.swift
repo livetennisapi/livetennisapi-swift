@@ -379,6 +379,7 @@ final class LiveTennisApiClientTests: XCTestCase {
             {"id": 9, "tournament": "X Open", "tour": "wta", \
             "tournament_id": "wta-x-open", "round": "Final", "round_code": "F", \
             "status": "completed", "event_status": "Retired", \
+            "event_status_updated_at": "2026-08-19T09:15:00Z", \
             "is_doubles": false, "winner": 1, "withdrew": 2}
             """
         respond(body: Data(json.utf8))
@@ -388,7 +389,20 @@ final class LiveTennisApiClientTests: XCTestCase {
         XCTAssertEqual(match.tournamentId, "wta-x-open")
         XCTAssertEqual(match.roundCode, "F")
         XCTAssertEqual(match.eventStatus, "Retired")
+        XCTAssertEqual(match.eventStatusUpdatedAt, "2026-08-19T09:15:00Z")
         XCTAssertEqual(match.withdrew, 2, "the withdrawer is the loser")
+    }
+
+    // event_status_updated_at (added 2026-08-19) is never backfilled: a match
+    // whose admin status has never changed since the field was introduced
+    // sends null or omits it entirely, and both must decode to nil.
+    func testEventStatusUpdatedAtIsNilWhenNullOrAbsent() throws {
+        let nulled = try JSONDecoder().decode(
+            Match.self, from: Data("{\"id\":1,\"event_status_updated_at\":null}".utf8))
+        XCTAssertNil(nulled.eventStatusUpdatedAt)
+        let absent = try JSONDecoder().decode(
+            Match.self, from: Data("{\"id\":1}".utf8))
+        XCTAssertNil(absent.eventStatusUpdatedAt)
     }
 
     func testAnUnstatedOrUnknownMatchTourDecodesAsNil() throws {
