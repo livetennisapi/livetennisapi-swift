@@ -24,7 +24,7 @@ Challenger, ITF and juniors.
 Add to your `Package.swift`:
 
 ```swift
-.package(url: "https://github.com/livetennisapi/livetennisapi-swift.git", from: "1.1.1")
+.package(url: "https://github.com/livetennisapi/livetennisapi-swift.git", from: "1.2.0")
 ```
 
 **Zero dependencies.** `URLSession` + `Codable` only (with `FoundationNetworking`
@@ -152,6 +152,11 @@ a long block, not a window — the client never auto-retries it.
   on; the `tour` field on `Player`/`Fixture` is opaque and granular
   (UPPERCASE on doubles teams) — never parse those into the enum. An invalid
   filter is a 400 carrying the allowed list.
+- `Match.hasAnalysis` / `Match.hasMarket` (every tier, since 2026-09-02) say
+  whether a model thesis/profile, or a match-winner market, exists for the
+  match. Filter a slate on them before calling `getMatchAnalysis` or the
+  prices endpoint, which answer `404` (`no_analysis` / `no_market`) about the
+  same fact. `nil` only when talking to an older server.
 - `DataCompleteness.known`/`of` are null on a doubles team (with a `note`):
   null means "not applicable", not zero. Check `applicable` first.
 - Tape rows carry `pointWinner` only on `sequence: .clean`, and a null row

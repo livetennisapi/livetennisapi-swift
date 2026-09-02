@@ -414,6 +414,16 @@ public struct Match: Decodable, Sendable {
     /// of the sport, always the loser. Present only when ``eventStatus`` is
     /// `"Retired"` or `"Walk Over"` and the winner is derivable.
     public let withdrew: Int?
+    /// Whether a model thesis or profile exists for this match — on every
+    /// `/matches` row and the detail, every tier (since 2026-09-02). Filter
+    /// the slate on this before calling `/matches/{id}/analysis`, which
+    /// answers `404 no_analysis` about the same fact. `nil` only when
+    /// talking to an older server that does not send it.
+    public let hasAnalysis: Bool?
+    /// Whether a match-winner market is mapped to this match (every tier,
+    /// since 2026-09-02). Same role for `/markets/{id}/prices`
+    /// (`404 no_market`). `nil` only against an older server.
+    public let hasMarket: Bool?
     /// The match-winner market, embedded at PRO and above.
     public let market: Market?
     /// The model analysis, embedded at ULTRA.
@@ -426,6 +436,8 @@ public struct Match: Decodable, Sendable {
         case roundCode = "round_code"
         case eventStatus = "event_status"
         case eventStatusUpdatedAt = "event_status_updated_at"
+        case hasAnalysis = "has_analysis"
+        case hasMarket = "has_market"
         case isDoubles = "is_doubles"
         case scheduledTime = "scheduled_time"
     }
@@ -450,6 +462,8 @@ public struct Match: Decodable, Sendable {
         score = try c.decodeIfPresent(Score.self, forKey: .score)
         winner = try c.decodeIfPresent(Int.self, forKey: .winner)
         withdrew = try c.decodeIfPresent(Int.self, forKey: .withdrew)
+        hasAnalysis = try c.decodeIfPresent(Bool.self, forKey: .hasAnalysis)
+        hasMarket = try c.decodeIfPresent(Bool.self, forKey: .hasMarket)
         market = try c.decodeIfPresent(Market.self, forKey: .market)
         analysis = try c.decodeIfPresent(Analysis.self, forKey: .analysis)
     }

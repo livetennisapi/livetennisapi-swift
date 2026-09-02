@@ -4,6 +4,22 @@ All notable changes to this package are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org).
 
+## [1.2.0] - 2026-09-02
+
+### Added
+
+- `Match.hasAnalysis` / `Match.hasMarket` (`has_analysis` / `has_market`,
+  `Bool?`) — whether a model thesis or profile, or a match-winner market,
+  exists for the match. On every row of `/matches` and on the match detail,
+  every tier (API 1.9.0, shipped 2026-09-02). Filter the slate on them before
+  calling `/matches/{id}/analysis` or `/markets/{id}/prices`, which answer
+  `404 no_analysis` / `404 no_market` about the same fact. `nil` only against
+  an older server that does not send them.
+- `Match.eventStatusUpdatedAt` (`event_status_updated_at`) — the instant the
+  current `eventStatus` was recorded (ISO 8601 UTC, API 2026-08-19; `nil`
+  when the status has never changed since the field was introduced — never
+  backfilled). On `main` since 2026-08-19, first released here.
+
 ## [1.1.1] - 2026-08-16
 
 ### Added

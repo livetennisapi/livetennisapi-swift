@@ -75,7 +75,7 @@ public final class LiveTennisApiClient: @unchecked Sendable {
         authMethod: AuthMethod = .bearer,
         timeout: TimeInterval = 30,
         maxRetries: Int = 2,
-        userAgent: String = "livetennisapi-swift/1.1.1",
+        userAgent: String = "livetennisapi-swift/1.2.0",
         session: URLSession? = nil,
         onRateLimit: (@Sendable (RateLimit) -> Void)? = nil
     ) {

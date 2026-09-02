@@ -94,6 +94,8 @@ final class LiveTennisApiClientTests: XCTestCase {
         let match = try await makeClient().getMatch(22313)
         XCTAssertEqual(match.id, 22313)
         XCTAssertEqual(match.status, .live)
+        XCTAssertEqual(match.hasAnalysis, true, "a thesis/profile exists (added 2026-09-02)")
+        XCTAssertEqual(match.hasMarket, true, "a match-winner market is mapped")
 
         let score = try XCTUnwrap(match.score, "live match has a score")
         // Points are STRINGS; games are per-player growing arrays.
@@ -380,6 +382,7 @@ final class LiveTennisApiClientTests: XCTestCase {
             "tournament_id": "wta-x-open", "round": "Final", "round_code": "F", \
             "status": "completed", "event_status": "Retired", \
             "event_status_updated_at": "2026-08-19T09:15:00Z", \
+            "has_analysis": true, "has_market": false, \
             "is_doubles": false, "winner": 1, "withdrew": 2}
             """
         respond(body: Data(json.utf8))
@@ -391,6 +394,22 @@ final class LiveTennisApiClientTests: XCTestCase {
         XCTAssertEqual(match.eventStatus, "Retired")
         XCTAssertEqual(match.eventStatusUpdatedAt, "2026-08-19T09:15:00Z")
         XCTAssertEqual(match.withdrew, 2, "the withdrawer is the loser")
+        XCTAssertEqual(match.hasAnalysis, true)
+        XCTAssertEqual(match.hasMarket, false, "present-false is a real answer: skip /prices")
+    }
+
+    // has_analysis / has_market (every tier since 2026-09-02) carry the same
+    // fact the per-match analysis and prices endpoints 404 about. An older
+    // server omits them, and absence must decode to nil — never to false.
+    func testHasAnalysisAndHasMarketDecodeFalseAndAbsent() throws {
+        let present = try JSONDecoder().decode(
+            Match.self, from: Data("{\"id\":1,\"has_analysis\":false,\"has_market\":true}".utf8))
+        XCTAssertEqual(present.hasAnalysis, false)
+        XCTAssertEqual(present.hasMarket, true)
+        let absent = try JSONDecoder().decode(
+            Match.self, from: Data("{\"id\":1}".utf8))
+        XCTAssertNil(absent.hasAnalysis)
+        XCTAssertNil(absent.hasMarket)
     }
 
     // event_status_updated_at (added 2026-08-19) is never backfilled: a match
