@@ -22,6 +22,13 @@ All notable changes to this package are documented here. The format follows
   (`doubles_ranking`: rank, points, observedOn). Single-player read only,
   paid tiers; `nil` on a FREE key.
 
+### Fixed
+
+- A `from` or `to` value with a `+00:00` offset reached the server as
+  `12:00:00 00:00` and earned a 400 `bad_date`. `URLComponents.queryItems`
+  leaves a literal `+` alone, and the server reads it as a space. The
+  transport now percent-encodes `+` in every query it sends.
+
 ## [1.2.0] - 2026-09-02
 
 ### Added

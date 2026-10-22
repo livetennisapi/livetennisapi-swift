@@ -695,7 +695,15 @@ public final class LiveTennisApiClient: @unchecked Sendable {
         let items = query.compactMap { name, value in
             value.map { URLQueryItem(name: name, value: $0) }
         }
-        if !items.isEmpty { components.queryItems = items }
+        if !items.isEmpty {
+            components.queryItems = items
+            // URLComponents leaves a literal "+" alone, and the server reads a
+            // bare "+" in a query as a space: a timestamp like
+            // "2026-10-20T12:00:00+00:00" would arrive as "...12:00:00 00:00"
+            // and earn a 400. Encode it ourselves on the whole query.
+            components.percentEncodedQuery = components.percentEncodedQuery?
+                .replacingOccurrences(of: "+", with: "%2B")
+        }
         let url = components.url!
 
         var request = URLRequest(url: url)

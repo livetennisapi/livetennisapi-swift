@@ -1041,6 +1041,37 @@ extension LiveTennisApiClientTests {
         XCTAssertEqual(try sentQueryValue("last"), "5")
     }
 
+    func testPlayerStatsEncodesPlusInTimestamps() async throws {
+        respond(body: fixture("player-stats"))
+        _ = try await makeClient().getPlayerStats(
+            810, from: "2026-10-20T12:00:00+00:00", to: "2026-10-21T12:00:00+00:00")
+
+        // URLComponents.queryItems leaves a literal "+" alone and the server
+        // reads it as a space, so "+00:00" arrived as " 00:00" and earned a
+        // 400 bad_date. The wire form has to carry %2B.
+        let url = try XCTUnwrap(StubURLProtocol.requests.first?.url)
+        let raw = try XCTUnwrap(
+            URLComponents(url: url, resolvingAgainstBaseURL: false)?.percentEncodedQuery)
+        // Foundation may or may not escape ":" in a query, so only pin the "+".
+        XCTAssertFalse(raw.contains("+"), raw)
+        XCTAssertEqual(raw.components(separatedBy: "%2B00").count, 3, raw)
+        XCTAssertEqual(try sentQueryValue("from"), "2026-10-20T12:00:00+00:00")
+        XCTAssertEqual(try sentQueryValue("to"), "2026-10-21T12:00:00+00:00")
+    }
+
+    func testListMatchesEncodesPlusInTimestamps() async throws {
+        respond(body: Data("{\"data\":[],\"meta\":{\"count\":0}}".utf8))
+        _ = try await makeClient().listMatches(
+            from: "2026-10-20T00:00:00+00:00", to: "2026-10-20T23:59:59+00:00")
+
+        let url = try XCTUnwrap(StubURLProtocol.requests.first?.url)
+        let raw = try XCTUnwrap(
+            URLComponents(url: url, resolvingAgainstBaseURL: false)?.percentEncodedQuery)
+        XCTAssertFalse(raw.contains("+"), raw)
+        XCTAssertEqual(try sentQueryValue("from"), "2026-10-20T00:00:00+00:00")
+        XCTAssertEqual(try sentQueryValue("to"), "2026-10-20T23:59:59+00:00")
+    }
+
     func testPlayerStatsWithoutFiltersSendsNoQuery() async throws {
         respond(body: Data("{\"player\": {\"id\": 1}}".utf8))
         let stats = try await makeClient().getPlayerStats(1)
