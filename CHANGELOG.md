@@ -4,6 +4,19 @@ All notable changes to this package are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org).
 
+## [Unreleased]
+
+### Added
+
+- `getPlayerStats(_:from:to:surface:level:last:)` for
+  `GET /players/{id}/stats` (API 1.13.61, 2026-10-22). It returns one
+  player's record over our completed singles matches as `PlayerStatsResult`.
+  PRO gets `records`: W/L splits, the set-based record, withdrawals and
+  recent matches. ULTRA adds `serveReturn`, which stays `nil` below ULTRA.
+- `Player.heightCm` (`height_cm`) and `Player.doublesRanking`
+  (`doubles_ranking`: rank, points, observedOn). Single-player read only,
+  paid tiers; `nil` on a FREE key.
+
 ## [1.2.0] - 2026-09-02
 
 ### Added

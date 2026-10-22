@@ -193,6 +193,32 @@ public final class LiveTennisApiClient: @unchecked Sendable {
         try await get("/players/\(playerId)")
     }
 
+    /// One player's record over our completed singles matches (2023 onward):
+    /// W/L overall and by surface, venue, level and season, the set-based
+    /// record, withdrawals and the last N matches. **PRO**. ULTRA adds
+    /// ``PlayerStatsResult/serveReturn``, which is `nil` below ULTRA.
+    ///
+    /// - Parameters:
+    ///   - playerId: A player id. A doubles-team id is refused with 400
+    ///     `doubles_not_supported`.
+    ///   - from: Window start, an ISO date or UTC instant. Default `to`
+    ///     minus 365 days.
+    ///   - to: Window end (a bare date includes the whole day). Default now.
+    ///   - surface: `"hard"`, `"clay"`, `"grass"` or `"indoor"`.
+    ///   - level: `"atp"`, `"wta"`, `"challenger"`, `"itf"` or `"juniors"`.
+    ///   - last: How many recent matches to list, 1–50 (server default 20).
+    public func getPlayerStats(
+        _ playerId: Int64, from: String? = nil, to: String? = nil,
+        surface: String? = nil, level: String? = nil, last: Int? = nil
+    ) async throws -> PlayerStatsResult {
+        try await get(
+            "/players/\(playerId)/stats",
+            query: [
+                ("from", from), ("to", to), ("surface", surface), ("level", level),
+                ("last", last.map(String.init)),
+            ])
+    }
+
     /// The match-winner market(s) for a match. **PRO**. The markets carry no
     /// price ticks; use ``getMarketPrices(matchId:limit:)`` for those.
     public func listMarkets(matchId: Int64) async throws -> Page<Market> {

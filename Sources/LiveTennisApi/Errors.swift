@@ -57,6 +57,7 @@ func requiredTier(forPath path: String, query: [(String, String?)] = []) -> Tier
         ("/charting", .ultra),
         ("/ws-token", .ultra),
         ("/webhooks", .ultra),
+        ("/stats", .pro),
         ("/events", .pro),
         ("/markets", .pro),
         ("/prices", .pro),

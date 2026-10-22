@@ -1,0 +1,68 @@
+{
+  "player": {"id": 810, "name": "Example Player"},
+  "window": {"from": "2025-10-22T00:00:00Z", "to": "2026-10-22T00:00:00Z"},
+  "filters": {"surface": null, "level": null, "last": 2},
+  "records": {
+    "overall": {"matches": 40, "wins": 28, "losses": 12, "win_pct": 70.0},
+    "last_12_months": {"matches": 40, "wins": 28, "losses": 12, "win_pct": 70.0},
+    "by_surface": {
+      "hard": {"matches": 30, "wins": 22, "losses": 8, "win_pct": 73.3},
+      "grass": {"matches": 0, "wins": 0, "losses": 0, "win_pct": null}
+    },
+    "by_venue": {"indoor": {"matches": 10, "wins": 6, "losses": 4, "win_pct": 60.0}},
+    "by_level": {"atp": {"matches": 40, "wins": 28, "losses": 12, "win_pct": 70.0}},
+    "by_season": {"2026": {"matches": 25, "wins": 18, "losses": 7, "win_pct": 72.0}},
+    "sets": {
+      "sample": {"matches": 37, "excluded": {"retired": 2, "walkover": 1, "default": 0, "score_incomplete": 0}},
+      "tiebreaks": {"played": 15, "won": 9, "lost": 6, "win_pct": 60.0},
+      "deciding_sets": {"played": 10, "won": 6, "lost": 4, "win_pct": 60.0},
+      "after_winning_first_set": {"matches": 25, "won": 22, "lost": 3, "win_pct": 88.0},
+      "after_losing_first_set": {"matches": 12, "won": 4, "lost": 8, "win_pct": 33.3},
+      "comebacks": {"matches_lost_a_set": 18, "won": 8, "win_pct": 44.4},
+      "sets": {"won": 62, "lost": 30, "win_pct": 67.4}
+    },
+    "withdrawals": {
+      "retired": {"given": 1, "received": 1},
+      "walkover": {"given": 0, "received": 1},
+      "default": {"given": 0, "received": 0}
+    },
+    "excluded": {"not_singles": 3, "unresolved": 0, "abandoned": 1, "no_published_winner": 0},
+    "recent": [
+      {
+        "match_id": 90001, "date": "2026-10-20", "scheduled_time": "2026-10-20T12:00:00Z",
+        "tournament_id": "example-open", "tournament": "Example Open", "round": "Final", "round_code": "F",
+        "surface": "hard", "indoor": true, "level": "atp",
+        "opponent": {"id": 12, "name": "Other Player"},
+        "won": true, "outcome": "completed",
+        "score": {"sets": [2, 1], "games": [[6, 3, 7], [4, 6, 5]]}
+      },
+      {
+        "match_id": 90000, "date": "2026-10-18", "scheduled_time": null,
+        "tournament_id": null, "tournament": null, "round": null, "round_code": null,
+        "surface": null, "indoor": null, "level": null,
+        "opponent": {"id": 13, "name": null},
+        "won": false, "outcome": "retired", "score": null
+      }
+    ]
+  },
+  "serve_return": {
+    "matches": 40,
+    "matches_with_stats": 35,
+    "serve": {
+      "aces": {"total": 210, "matches": 35, "per_match": 6.0},
+      "double_faults": {"total": null, "matches": 0, "per_match": null},
+      "first_serve_in": {"numerator": 1500, "denominator": 2400, "pct": 62.5, "matches": 35},
+      "first_serve_points_won": {"numerator": 1100, "denominator": 1500, "pct": 73.3, "matches": 35},
+      "second_serve_points_won": {"numerator": 480, "denominator": 900, "pct": 53.3, "matches": 35},
+      "service_games_won": {"numerator": 400, "denominator": 470, "pct": 85.1, "matches": 35},
+      "break_points_saved": {"numerator": 90, "denominator": 140, "pct": 64.3, "matches": 35}
+    },
+    "return": {
+      "first_serve_return_points_won": {"numerator": 500, "denominator": 1600, "pct": 31.3, "matches": 35},
+      "second_serve_return_points_won": {"numerator": 450, "denominator": 900, "pct": 50.0, "matches": 35},
+      "return_games_won": {"numerator": 110, "denominator": 460, "pct": 23.9, "matches": 35},
+      "break_points_converted": {"numerator": null, "denominator": null, "pct": null, "matches": 0}
+    }
+  },
+  "meta": {"generated_at": "2026-10-22T09:00:00Z", "note": "Computed from our own completed singles matches (2023 onward). For 1968-2022 use /history/archive/career."}
+}

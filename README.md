@@ -60,6 +60,7 @@ Access is tiered (FREE / BASIC / PRO / ULTRA). A call above your tier throws
 | `getMatch(_:)` | `/matches/{id}` | FREE (+`market` PRO, +`analysis` ULTRA) |
 | `getMatchScore(_:)` | `/matches/{id}/score` | FREE (ULTRA adds model fields) |
 | `searchPlayers(…)` / `getPlayer(_:)` | `/players`, `/players/{id}` | FREE |
+| `getPlayerStats(_:from:to:surface:level:last:)` | `/players/{id}/stats` | PRO (`serveReturn` ULTRA) |
 | `listFixtures(…)` | `/fixtures` | FREE |
 | `listTournaments(…)` / `getTournament(_:)` | `/tournaments`, `/tournaments/{id}` | FREE |
 | `getUsage()` | `/usage` | any tier (quota-exempt) |

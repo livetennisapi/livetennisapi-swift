@@ -1023,3 +1023,88 @@ final class Observed: @unchecked Sendable {
         return storage
     }
 }
+
+extension LiveTennisApiClientTests {
+    // MARK: - GET /players/{id}/stats and the 2026-10-22 profile fields
+
+    func testPlayerStatsSendsItsFilters() async throws {
+        respond(body: fixture("player-stats"))
+        _ = try await makeClient().getPlayerStats(
+            810, from: "2025-01-01", to: "2025-12-31", surface: "clay", level: "atp", last: 5)
+
+        let url = try XCTUnwrap(StubURLProtocol.requests.first?.url)
+        XCTAssertTrue(url.path.hasSuffix("/players/810/stats"))
+        XCTAssertEqual(try sentQueryValue("from"), "2025-01-01")
+        XCTAssertEqual(try sentQueryValue("to"), "2025-12-31")
+        XCTAssertEqual(try sentQueryValue("surface"), "clay")
+        XCTAssertEqual(try sentQueryValue("level"), "atp")
+        XCTAssertEqual(try sentQueryValue("last"), "5")
+    }
+
+    func testPlayerStatsWithoutFiltersSendsNoQuery() async throws {
+        respond(body: Data("{\"player\": {\"id\": 1}}".utf8))
+        let stats = try await makeClient().getPlayerStats(1)
+        XCTAssertTrue(try sentQueryItems().isEmpty)
+        XCTAssertNil(stats.serveReturn, "absent below ULTRA stays nil")
+        XCTAssertNil(stats.records)
+    }
+
+    func testPlayerStatsDecodes() async throws {
+        respond(body: fixture("player-stats"))
+        let stats = try await makeClient().getPlayerStats(810)
+
+        XCTAssertEqual(stats.player?.id, 810)
+        XCTAssertEqual(stats.filters?.last, 2)
+        let records = try XCTUnwrap(stats.records)
+        XCTAssertEqual(records.overall?.wins, 28)
+        XCTAssertEqual(records.bySurface?["hard"]?.winPct, 73.3)
+        XCTAssertNil(records.bySurface?["grass"]?.winPct, "an empty sample is nil, never 0")
+        XCTAssertEqual(records.sets?.sample?.excluded?["walkover"], 1)
+        XCTAssertEqual(records.sets?.tiebreaks?.won, 9)
+        XCTAssertEqual(records.sets?.comebacks?.matchesLostASet, 18)
+        XCTAssertEqual(records.withdrawals?.walkover?.received, 1)
+        XCTAssertEqual(records.excluded?.abandoned, 1)
+        XCTAssertEqual(records.recent?.count, 2)
+        XCTAssertEqual(records.recent?.first?.score?.sets ?? [], [2, 1])
+        XCTAssertEqual(records.recent?.first?.score?.games?.first?[2], 7)
+        XCTAssertNil(records.recent?.last?.score)
+        XCTAssertEqual(records.recent?.last?.outcome, "retired")
+
+        let sr = try XCTUnwrap(stats.serveReturn)
+        XCTAssertEqual(sr.matchesWithStats, 35)
+        XCTAssertEqual(sr.serve?.aces?.perMatch, 6.0)
+        XCTAssertNil(sr.serve?.doubleFaults?.total)
+        XCTAssertEqual(sr.serve?.doubleFaults?.matches, 0)
+        XCTAssertEqual(sr.serve?.firstServeIn?.numerator, 1500)
+        XCTAssertNil(sr.return?.breakPointsConverted?.pct)
+    }
+
+    func testPlayerStatsBelowProNamesTheProTier() async throws {
+        respond(status: 403, body: Data("{\"error\":\"upgrade_required\"}".utf8))
+        do {
+            _ = try await makeClient().getPlayerStats(1)
+            XCTFail("expected upgradeRequired")
+        } catch LiveTennisApiError.upgradeRequired(_, let tier) {
+            XCTAssertEqual(tier, .pro)
+        }
+    }
+
+    func testPlayerHeightAndDoublesRanking() async throws {
+        respond(body: Data("""
+            {"id": 1, "name": "A", "height_cm": 188, \
+            "doubles_ranking": {"rank": 42, "points": 1200, "observed_on": "2026-10-19"}}
+            """.utf8))
+        let player = try await makeClient().getPlayer(1)
+        XCTAssertEqual(player.heightCm, 188)
+        XCTAssertEqual(player.doublesRanking?.rank, 42)
+        XCTAssertEqual(player.doublesRanking?.points, 1200)
+        XCTAssertEqual(player.doublesRanking?.observedOn, "2026-10-19")
+    }
+
+    func testPlayerFreeKeyNullFieldsStayNil() async throws {
+        respond(body: Data("{\"id\": 1, \"name\": \"A\", \"height_cm\": null, \"doubles_ranking\": null}".utf8))
+        let player = try await makeClient().getPlayer(1)
+        XCTAssertNil(player.heightCm)
+        XCTAssertNil(player.doublesRanking)
+    }
+}

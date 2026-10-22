@@ -304,6 +304,15 @@ public struct Player: Decodable, Sendable {
     public let backhand: Int?
     /// The date of birth (calendar date, no time).
     public let birthday: String?
+    /// Height in centimetres from the results archive's record of the same
+    /// person. Single-player read only; paid tiers, `nil` on a FREE key.
+    /// Never inferred.
+    public let heightCm: Int?
+    /// The current position on the official ATP/WTA doubles table.
+    /// Single-player read only; paid tiers, `nil` on a FREE key, off the
+    /// table, or last seen more than 21 days ago. Never copied into
+    /// ``ranking``.
+    public let doublesRanking: DoublesRanking?
     /// Whether this entry is a doubles pairing rather than an individual.
     public let isDoublesTeam: Bool
     /// How much biographical detail is known. Present on every player in a
@@ -319,6 +328,8 @@ public struct Player: Decodable, Sendable {
         case rankingMovement = "ranking_movement"
         case isDoublesTeam = "is_doubles_team"
         case dataCompleteness = "data_completeness"
+        case heightCm = "height_cm"
+        case doublesRanking = "doubles_ranking"
     }
 
     public init(from decoder: Decoder) throws {
@@ -333,6 +344,8 @@ public struct Player: Decodable, Sendable {
         hand = try c.decodeIfPresent(String.self, forKey: .hand)
         backhand = try c.decodeIfPresent(Int.self, forKey: .backhand)
         birthday = try c.decodeIfPresent(String.self, forKey: .birthday)
+        heightCm = try c.decodeIfPresent(Int.self, forKey: .heightCm)
+        doublesRanking = try c.decodeIfPresent(DoublesRanking.self, forKey: .doublesRanking)
         isDoublesTeam = try c.decodeIfPresent(Bool.self, forKey: .isDoublesTeam) ?? false
         dataCompleteness = try c.decodeIfPresent(DataCompleteness.self, forKey: .dataCompleteness)
         stats = try c.decodeIfPresent(PlayerStats.self, forKey: .stats)
