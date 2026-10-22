@@ -1071,12 +1071,39 @@ extension LiveTennisApiClientTests {
         XCTAssertEqual(records.recent?.last?.outcome, "retired")
 
         let sr = try XCTUnwrap(stats.serveReturn)
+        XCTAssertEqual(sr.matches, 40)
         XCTAssertEqual(sr.matchesWithStats, 35)
+        XCTAssertEqual(sr.matchesIncomplete, 5)
         XCTAssertEqual(sr.serve?.aces?.perMatch, 6.0)
         XCTAssertNil(sr.serve?.doubleFaults?.total)
         XCTAssertEqual(sr.serve?.doubleFaults?.matches, 0)
         XCTAssertEqual(sr.serve?.firstServeIn?.numerator, 1500)
         XCTAssertNil(sr.return?.breakPointsConverted?.pct)
+    }
+
+    func testPlayerStatsNullGameAndIncompleteMatchesDecode() async throws {
+        // A null game count is unknown, not 0, and must keep its position in the set.
+        respond(body: Data("""
+            {"player": {"id": 1}, \
+            "records": {"recent": [{"match_id": 7, "won": true, "outcome": "completed", \
+            "score": {"sets": [2, 0], "games": [[6, null], [4, 0]]}}]}, \
+            "serve_return": {"matches": 1, "matches_with_stats": 0, "matches_incomplete": 1}}
+            """.utf8))
+        let stats = try await makeClient().getPlayerStats(1)
+
+        let games = try XCTUnwrap(stats.records?.recent?.first?.score?.games)
+        XCTAssertEqual(games.count, 2)
+        XCTAssertEqual(games[0].count, 2)
+        XCTAssertEqual(games[0][0], 6)
+        XCTAssertNil(games[0][1])
+        XCTAssertEqual(games[1].count, 2)
+        XCTAssertEqual(games[1], [4, 0])
+
+        let sr = try XCTUnwrap(stats.serveReturn)
+        XCTAssertEqual(sr.matches, 1)
+        XCTAssertEqual(sr.matchesWithStats, 0)
+        XCTAssertEqual(sr.matchesIncomplete, 1)
+        XCTAssertNil(sr.serve)
     }
 
     func testPlayerStatsBelowProNamesTheProTier() async throws {

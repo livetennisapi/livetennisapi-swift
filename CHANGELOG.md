@@ -13,6 +13,11 @@ All notable changes to this package are documented here. The format follows
   player's record over our completed singles matches as `PlayerStatsResult`.
   PRO gets `records`: W/L splits, the set-based record, withdrawals and
   recent matches. ULTRA adds `serveReturn`, which stays `nil` below ULTRA.
+  `serveReturn.matchesIncomplete` (`matches_incomplete`) counts the matches
+  whose statistics stop short of the final and are left out of every sum.
+  `PlayerRecentScore.games` is `[[Int?]]?`: the API passes the stored
+  per-set lists through as held, so an inner `nil` means that game count is
+  unknown and is kept in place rather than read as 0.
 - `Player.heightCm` (`height_cm`) and `Player.doublesRanking`
   (`doubles_ranking`: rank, points, observedOn). Single-player read only,
   paid tiers; `nil` on a FREE key.

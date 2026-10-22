@@ -226,7 +226,9 @@ public struct PlayerRecentMatch: Decodable, Sendable {
 /// Sets `[player, opponent]`, games `[[player per set], [opponent per set]]`.
 public struct PlayerRecentScore: Decodable, Sendable {
     public let sets: [Int?]?
-    public let games: [[Int]]?
+    /// Games per set, player-major, passed through exactly as held. An inner
+    /// `nil` means that game count is unknown, not 0; every position is kept.
+    public let games: [[Int?]]?
 }
 
 /// Measured per-match statistics summed over the window. **ULTRA**. Each
@@ -234,12 +236,16 @@ public struct PlayerRecentScore: Decodable, Sendable {
 public struct PlayerServeReturn: Decodable, Sendable {
     public let matches: Int?
     public let matchesWithStats: Int?
+    /// Matches whose measured statistics are held but stop short of the final,
+    /// or cannot be judged against it. Left out of every sum.
+    public let matchesIncomplete: Int?
     public let serve: PlayerServeTotals?
     public let `return`: PlayerReturnTotals?
 
     enum CodingKeys: String, CodingKey {
         case matches, serve, `return`
         case matchesWithStats = "matches_with_stats"
+        case matchesIncomplete = "matches_incomplete"
     }
 }
 
