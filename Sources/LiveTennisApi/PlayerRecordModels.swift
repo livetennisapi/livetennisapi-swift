@@ -206,6 +206,7 @@ public struct PlayerRecentMatch: Decodable, Sendable {
     public let surface: String?
     public let indoor: Bool?
     public let level: String?
+    /// The opponent, or `nil` when the match row holds no opponent id.
     public let opponent: PlayerRef?
     public let won: Bool?
     /// `completed`, `retired`, `walkover` or `default`.
