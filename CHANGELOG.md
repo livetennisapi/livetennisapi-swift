@@ -18,6 +18,15 @@ All notable changes to this package are documented here. The format follows
   `PlayerRecentScore.games` is `[[Int?]]?`: the API passes the stored
   per-set lists through as held, so an inner `nil` means that game count is
   unknown and is kept in place rather than read as 0.
+- **Score first.** Since 2026-10-23 every push-feed `score` frame carries
+  `model` beside `score` and a state leaves twice: `pending` the instant it
+  is accepted (the four model keys present and null) and `ready` once its
+  model run finished, both with the same `score.sequence`. Dedup on
+  `(match_id, score.sequence, model)`, and read a frame with no `model` as
+  `ready`. `getWsToken(modelFields: false)` mints with `?model_fields=off`
+  for the score-only channels (one `off` frame per state, model keys left
+  out), which `WsToken.channels` then names, and `WsToken.modelFields`
+  echoes the switch. `getWsToken()` keeps its behaviour.
 - `Player.heightCm` (`height_cm`) and `Player.doublesRanking`
   (`doubles_ranking`: rank, points, observedOn). Single-player read only,
   paid tiers; `nil` on a FREE key.

@@ -743,7 +743,26 @@ final class LiveTennisApiClientTests: XCTestCase {
         XCTAssertFalse(token.token.isEmpty)
         XCTAssertEqual(token.expiresIn, 300)
         XCTAssertEqual(token.wsUrl, "wss://api.livetennisapi.com/connection/websocket")
-        XCTAssertEqual(token.channels?.match, "match:{id}")
+        XCTAssertEqual(token.channels?.match, "match:{match_id}")
+        XCTAssertEqual(token.channels?.slate, "slate:all")
+        XCTAssertEqual(token.modelFields, "on")
+        XCTAssertNil(try sentQueryValue("model_fields"))
+    }
+
+    func testWsTokenModelFieldsOffReachesTheWireAndFollowsTheScoreOnlyVocabulary() async throws {
+        respond(body: fixture("ws-token-score-only"))
+
+        let token = try await makeClient().getWsToken(modelFields: false)
+        XCTAssertEqual(try sentQueryValue("model_fields"), "off")
+        XCTAssertEqual(token.modelFields, "off")
+        XCTAssertEqual(token.channels?.match, "match:{match_id}:score_only")
+        XCTAssertEqual(token.channels?.slate, "slate:score_only")
+    }
+
+    func testWsTokenWithoutTheEchoDecodesNil() throws {
+        let data = Data(#"{"token":"t","channels":{"slate":"slate:all"}}"#.utf8)
+        let token = try JSONDecoder().decode(WsToken.self, from: data)
+        XCTAssertNil(token.modelFields)
         XCTAssertEqual(token.channels?.slate, "slate:all")
     }
 

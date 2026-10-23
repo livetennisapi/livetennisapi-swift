@@ -684,9 +684,11 @@ public struct ChartingMatch: Decodable, Sendable {
 
 // MARK: - Push feed
 
-/// The channel vocabulary of the push WebSocket.
+/// The channel vocabulary of the push WebSocket. Minted with
+/// `modelFields: false`, ``match`` and ``slate`` name the score-only pair
+/// instead: `"match:{match_id}:score_only"` and `"slate:score_only"`.
 public struct WsChannels: Codable, Sendable {
-    /// The per-match channel template, `"match:{id}"` — substitute the
+    /// The per-match channel template, `"match:{match_id}"` — substitute the
     /// match id.
     public let match: String?
     /// The all-live-scores channel, `"slate:all"` — every live score frame.
@@ -694,9 +696,13 @@ public struct WsChannels: Codable, Sendable {
 }
 
 /// A short-lived connection token for the high-fan-out push feed, from
-/// ``LiveTennisApiClient/getWsToken()``. Frames are the same allowlist
-/// score objects the polling endpoints return. Mint a fresh token on
-/// reconnect.
+/// ``LiveTennisApiClient/getWsToken(modelFields:)``. Frames are the same
+/// allowlist score objects the polling endpoints return, nested under
+/// `score`. Since 2026-10-23 every `score` frame also carries `model`
+/// (`pending`, `ready` or `off`) and a state leaves the score channels
+/// twice, pending then ready, with the same `score.sequence`: dedup on
+/// `(match_id, score.sequence, model)`, and read a frame with no `model` as
+/// `ready`. Mint a fresh token on reconnect.
 public struct WsToken: Codable, Sendable {
     /// The signed token to present to ``wsUrl``.
     public let token: String
@@ -706,11 +712,18 @@ public struct WsToken: Codable, Sendable {
     public let wsUrl: String?
     /// The channel vocabulary, including the `"slate:all"` channel.
     public let channels: WsChannels?
+    /// Echo of the `model_fields` switch the token was minted with (since
+    /// 2026-10-23). `"off"` means ``channels`` names the score-only streams,
+    /// one `model: off` frame per state with the model keys left out; `"on"`
+    /// (the default) means the score channels, every state as `pending` then
+    /// `ready`. `nil` on a server that predates the switch.
+    public let modelFields: String?
 
     enum CodingKeys: String, CodingKey {
         case token, channels
         case expiresIn = "expires_in"
         case wsUrl = "ws_url"
+        case modelFields = "model_fields"
     }
 
     public init(from decoder: Decoder) throws {
@@ -719,5 +732,6 @@ public struct WsToken: Codable, Sendable {
         expiresIn = try c.decodeIfPresent(Int.self, forKey: .expiresIn)
         wsUrl = try c.decodeIfPresent(String.self, forKey: .wsUrl)
         channels = try c.decodeIfPresent(WsChannels.self, forKey: .channels)
+        modelFields = try c.decodeIfPresent(String.self, forKey: .modelFields)
     }
 }

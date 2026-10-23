@@ -571,11 +571,24 @@ public final class LiveTennisApiClient: @unchecked Sendable {
     /// WebSocket. **ULTRA**.
     ///
     /// The response carries the socket URL and the channel vocabulary —
-    /// `match:{id}` per-match streams and `slate:all` for every live score
-    /// frame. Frames are the same allowlist score objects the polling
-    /// endpoints return. Mint a fresh token on every reconnect.
-    public func getWsToken() async throws -> WsToken {
-        try await get("/ws-token")
+    /// `match:{match_id}` per-match streams and `slate:all` for every live
+    /// score frame. Frames are the same allowlist score objects the polling
+    /// endpoints return, nested under `score`. Mint a fresh token on every
+    /// reconnect.
+    ///
+    /// Since 2026-10-23 every state leaves the score channels twice, and
+    /// every `score` frame carries `model` beside `score`: `pending` the
+    /// instant the state is accepted (the four model keys present and null)
+    /// and `ready` once its model run finished, both with the same
+    /// `score.sequence`. Dedup on `(match_id, score.sequence, model)`; a
+    /// frame with no `model` is `ready`. Pass `modelFields: false` if you do
+    /// not use the model fields: the token is minted with
+    /// `?model_fields=off`, ``WsToken/channels`` then names the score-only
+    /// pair (`match:{match_id}:score_only` / `slate:score_only`) with one
+    /// `model: off` frame per state and the model keys left out, and
+    /// ``WsToken/modelFields`` echoes `"off"`.
+    public func getWsToken(modelFields: Bool = true) async throws -> WsToken {
+        try await get("/ws-token", query: [("model_fields", modelFields ? nil : "off")])
     }
 
     /// Upcoming scheduled fixtures, earliest first. FREE. Fixtures are
