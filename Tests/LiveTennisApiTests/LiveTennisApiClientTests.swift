@@ -412,6 +412,79 @@ final class LiveTennisApiClientTests: XCTestCase {
         XCTAssertNil(absent.hasMarket)
     }
 
+    // is_qualifying is three-valued: true, false and never stated. The
+    // pregame_forecasts array rides on ULTRA upcoming rows only, so an absent
+    // field must decode to nil while an empty array stays an empty array.
+    func testMatchIsQualifyingAndPregameForecastsDecode() throws {
+        let rich = try JSONDecoder().decode(
+            Match.self,
+            from: Data(
+                "{\"id\":1,\"is_qualifying\":true,\"pregame_forecasts\":[{\"win_probability_p1\":0.58,\"stage\":\"pregame\"}]}"
+                    .utf8))
+        XCTAssertEqual(rich.isQualifying, true)
+        XCTAssertEqual(rich.pregameForecasts?.count, 1)
+        XCTAssertEqual(rich.pregameForecasts?.first?.winProbabilityP1, 0.58)
+
+        let mainDraw = try JSONDecoder().decode(
+            Match.self, from: Data("{\"id\":2,\"is_qualifying\":false,\"pregame_forecasts\":[]}".utf8))
+        XCTAssertEqual(mainDraw.isQualifying, false, "present-false is a stated main draw")
+        XCTAssertEqual(mainDraw.pregameForecasts?.count, 0, "empty means no forecast yet, not nil")
+
+        let nulled = try JSONDecoder().decode(
+            Match.self, from: Data("{\"id\":3,\"is_qualifying\":null}".utf8))
+        XCTAssertNil(nulled.isQualifying, "null means never stated, and null is not false")
+
+        let absent = try JSONDecoder().decode(
+            Match.self, from: Data("{\"id\":4}".utf8))
+        XCTAssertNil(absent.isQualifying)
+        XCTAssertNil(absent.pregameForecasts, "absent below ULTRA — never a guessed empty list")
+    }
+
+    // The seven fixture fields the spec added through 1.13.82.
+    func testFixtureDecodesTheFieldsAddedThroughSpec1_13_82() throws {
+        let full = try JSONDecoder().decode(
+            Fixture.self,
+            from: Data(
+                ("{\"id\":87,\"status\":\"cancelled\",\"reason\":\"walkover\",\"match_id\":48213,"
+                    + "\"gender\":\"women\",\"is_qualifying\":false,"
+                    + "\"created_at\":\"2026-09-23T08:00:00Z\",\"updated_at\":\"2026-09-24T10:30:00Z\","
+                    + "\"pregame_forecasts\":[{\"win_probability_p1\":0.61,\"volatility_rating\":\"med\"}]}")
+                    .utf8))
+        XCTAssertEqual(full.reason, "walkover")
+        XCTAssertEqual(full.matchId, 48213)
+        XCTAssertEqual(full.gender, "women")
+        XCTAssertEqual(full.isQualifying, false, "present-false is a stated main draw")
+        XCTAssertEqual(full.createdAt, "2026-09-23T08:00:00Z")
+        XCTAssertEqual(full.updatedAt, "2026-09-24T10:30:00Z")
+        XCTAssertEqual(full.pregameForecasts?.count, 1)
+        XCTAssertEqual(full.pregameForecasts?.first?.winProbabilityP1, 0.61)
+        XCTAssertEqual(full.pregameForecasts?.first?.volatilityRating, "med")
+    }
+
+    // Null is a real state on every one of them: no match row yet, a mixed
+    // event, a draw never stated. Below ULTRA the forecasts field is absent.
+    func testFixtureNewFieldsAreNilWhenNullOrAbsent() throws {
+        let nulled = try JSONDecoder().decode(
+            Fixture.self,
+            from: Data(
+                ("{\"id\":88,\"reason\":null,\"match_id\":null,\"gender\":null,\"is_qualifying\":null,"
+                    + "\"created_at\":null,\"updated_at\":null,\"pregame_forecasts\":[]}")
+                    .utf8))
+        XCTAssertNil(nulled.reason)
+        XCTAssertNil(nulled.matchId)
+        XCTAssertNil(nulled.gender)
+        XCTAssertNil(nulled.isQualifying, "null means never stated, and null is not false")
+        XCTAssertNil(nulled.createdAt)
+        XCTAssertNil(nulled.updatedAt)
+        XCTAssertEqual(nulled.pregameForecasts?.count, 0, "empty means no forecast yet, not nil")
+
+        let absent = try JSONDecoder().decode(
+            Fixture.self, from: Data("{\"id\":89}".utf8))
+        XCTAssertNil(absent.pregameForecasts, "absent below ULTRA — never a guessed empty list")
+        XCTAssertNil(absent.isQualifying)
+        XCTAssertNil(absent.matchId)
+    }
+
     // event_status_updated_at (added 2026-08-19) is never backfilled: a match
     // whose admin status has never changed since the field was introduced
     // sends null or omits it entirely, and both must decode to nil.

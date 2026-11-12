@@ -424,6 +424,16 @@ public struct Match: Decodable, Sendable {
     /// since 2026-09-02). Same role for `/markets/{id}/prices`
     /// (`404 no_market`). `nil` only against an older server.
     public let hasMarket: Bool?
+    /// Whether this match belongs to the qualifying draw. Three-valued: `nil`
+    /// means never stated, and `nil` is not `false`. The qualifying draw
+    /// shares the main draw's tournament name and round vocabulary, so branch
+    /// on ``roundCode`` and this flag together.
+    public let isQualifying: Bool?
+    /// The match's pre-match forecasts, oldest first. ULTRA only, on
+    /// upcoming list rows. The field is absent below ULTRA and on other
+    /// statuses, and decodes to `nil`. Empty when no forecast has been
+    /// written yet.
+    public let pregameForecasts: [Profile]?
     /// The match-winner market, embedded at PRO and above.
     public let market: Market?
     /// The model analysis, embedded at ULTRA.
@@ -438,6 +448,8 @@ public struct Match: Decodable, Sendable {
         case eventStatusUpdatedAt = "event_status_updated_at"
         case hasAnalysis = "has_analysis"
         case hasMarket = "has_market"
+        case isQualifying = "is_qualifying"
+        case pregameForecasts = "pregame_forecasts"
         case isDoubles = "is_doubles"
         case scheduledTime = "scheduled_time"
     }
@@ -464,6 +476,8 @@ public struct Match: Decodable, Sendable {
         withdrew = try c.decodeIfPresent(Int.self, forKey: .withdrew)
         hasAnalysis = try c.decodeIfPresent(Bool.self, forKey: .hasAnalysis)
         hasMarket = try c.decodeIfPresent(Bool.self, forKey: .hasMarket)
+        isQualifying = try c.decodeIfPresent(Bool.self, forKey: .isQualifying)
+        pregameForecasts = try c.decodeIfPresent([Profile].self, forKey: .pregameForecasts)
         market = try c.decodeIfPresent(Market.self, forKey: .market)
         analysis = try c.decodeIfPresent(Analysis.self, forKey: .analysis)
     }
@@ -640,9 +654,44 @@ public struct Fixture: Decodable, Sendable {
     public let player2Id: Int64?
     /// The fixture's status.
     public let status: String?
+    /// Why a fixture ended without being played out: `"walkover"`,
+    /// `"retired"`, `"cancelled"`, `"default"` or `"postponed"`. ``status``
+    /// folds the first four into `"cancelled"`; this field names which one.
+    /// `nil` on a scheduled, live or finished fixture.
+    public let reason: String?
+    /// The id of the match this fixture became, which every match route
+    /// accepts. `nil` while no match exists yet — a fixture can publish days
+    /// before its match. Set when found and never cleared.
+    public let matchId: Int64?
+    /// The sex of the event: `"men"` or `"women"`. `nil` for mixed doubles
+    /// and mixed team events.
+    public let gender: String?
+    /// Whether the fixture is in the qualifying draw. Three-valued, like
+    /// ``Match/isQualifying``: `nil` means never stated, and `nil` is not
+    /// `false`. The qualifying draw is published under the main draw's
+    /// tournament name, so group a schedule on ``roundCode`` and this flag
+    /// together.
+    public let isQualifying: Bool?
+    /// When this row first existed (ISO 8601 UTC). A value inside your
+    /// polling window is a new row.
+    public let createdAt: String?
+    /// When this row last changed (ISO 8601 UTC). A moved value with
+    /// ``createdAt`` unchanged is a change to a row you already hold, such as
+    /// a re-listed start time.
+    public let updatedAt: String?
+    /// The bound match's pre-match forecasts, oldest first. ULTRA only. The
+    /// field is absent below ULTRA and decodes to `nil`, so `nil` means "not
+    /// entitled", never "no forecast". Empty when the fixture has no
+    /// ``matchId`` yet or no forecast has been written.
+    public let pregameForecasts: [Profile]?
 
     enum CodingKeys: String, CodingKey {
-        case id, tour, tournament, round, surface, status
+        case id, tour, tournament, round, surface, status, reason, gender
+        case matchId = "match_id"
+        case isQualifying = "is_qualifying"
+        case createdAt = "created_at"
+        case updatedAt = "updated_at"
+        case pregameForecasts = "pregame_forecasts"
         case eventDate = "event_date"
         case startTime = "start_time"
         case roundCode = "round_code"
@@ -667,6 +716,13 @@ public struct Fixture: Decodable, Sendable {
         player1Id = try c.decodeIfPresent(Int64.self, forKey: .player1Id)
         player2Id = try c.decodeIfPresent(Int64.self, forKey: .player2Id)
         status = try c.decodeIfPresent(String.self, forKey: .status)
+        reason = try c.decodeIfPresent(String.self, forKey: .reason)
+        matchId = try c.decodeIfPresent(Int64.self, forKey: .matchId)
+        gender = try c.decodeIfPresent(String.self, forKey: .gender)
+        isQualifying = try c.decodeIfPresent(Bool.self, forKey: .isQualifying)
+        createdAt = try c.decodeIfPresent(String.self, forKey: .createdAt)
+        updatedAt = try c.decodeIfPresent(String.self, forKey: .updatedAt)
+        pregameForecasts = try c.decodeIfPresent([Profile].self, forKey: .pregameForecasts)
     }
 }
 
