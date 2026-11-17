@@ -775,11 +775,9 @@ extension URLSession {
                             continuation.resume(throwing: URLError(.badServerResponse))
                         }
                     }
-                    // Cancelled before the task existed: never start it, and
-                    // fail the way a cancelled data(for:) does.
-                    if !box.start(task) {
-                        continuation.resume(throwing: URLError(.cancelled))
-                    }
+                    // Only the completion handler resumes the continuation,
+                    // including when the call was cancelled before this point.
+                    box.start(task)
                 }
             } onCancel: {
                 box.cancel()
@@ -799,16 +797,20 @@ extension URLSession {
         private var task: URLSessionDataTask?
         private var cancelled = false
 
-        /// Keeps and resumes the task, or returns false without resuming it
-        /// when the Swift task was already cancelled. Resuming under the lock
-        /// means `cancel()` never reaches a task that has not started.
-        func start(_ task: URLSessionDataTask) -> Bool {
+        /// Keeps and resumes the task. When the Swift task was already
+        /// cancelled, it cancels the data task instead of starting it, so the
+        /// completion handler still runs once, with `URLError.cancelled`, and
+        /// the session holds nothing that could complete later.
+        func start(_ task: URLSessionDataTask) {
             lock.lock()
-            defer { lock.unlock() }
-            if cancelled { return false }
+            if cancelled {
+                lock.unlock()
+                task.cancel()
+                return
+            }
             self.task = task
             task.resume()
-            return true
+            lock.unlock()
         }
 
         func cancel() {

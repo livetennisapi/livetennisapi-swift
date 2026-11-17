@@ -326,6 +326,43 @@ final class LiveTennisApiClientTests: XCTestCase {
         XCTAssertEqual((underlying as? URLError)?.code, .cancelled)
     }
 
+    func testACallFromAnAlreadyCancelledTaskFailsOnceAndLeavesNoTaskBehind() async throws {
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [SilentURLProtocol.self]
+        let session = URLSession(configuration: configuration)
+        let client = LiveTennisApiClient(
+            apiKey: Self.key,
+            baseURL: "https://stub.invalid/api/public/v1",
+            maxRetries: 0,
+            session: session)
+
+        let outcome = Outcome()
+        let call = Task {
+            withUnsafeCurrentTask { $0?.cancel() }
+            do {
+                _ = try await client.health()
+                outcome.set(nil)
+            } catch {
+                outcome.set(error)
+            }
+        }
+        for _ in 0..<50 where !outcome.isSet {
+            try await Task.sleep(nanoseconds: 100_000_000)
+        }
+        XCTAssertTrue(outcome.isSet, "a call from a cancelled task was still pending after 5 seconds")
+        guard outcome.isSet else { return }
+        guard case .connection(_, let underlying)? = outcome.error as? LiveTennisApiError else {
+            return XCTFail("expected a connection error, got \(String(describing: outcome.error))")
+        }
+        XCTAssertEqual((underlying as? URLError)?.code, .cancelled)
+
+        // A data task left registered with the session would complete now,
+        // and a second resume of the same continuation would trap.
+        session.invalidateAndCancel()
+        try await Task.sleep(nanoseconds: 500_000_000)
+        _ = await call.result
+    }
+
     func testTheRateLimitObserverSeesSuccessfulResponses() async throws {
         respond(
             headers: ["Retry-After": "60", "X-RateLimit-Remaining": "29"],
