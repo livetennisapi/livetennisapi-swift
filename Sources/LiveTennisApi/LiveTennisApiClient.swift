@@ -75,7 +75,7 @@ public final class LiveTennisApiClient: @unchecked Sendable {
         authMethod: AuthMethod = .bearer,
         timeout: TimeInterval = 30,
         maxRetries: Int = 2,
-        userAgent: String = "livetennisapi-swift/1.2.0",
+        userAgent: String = "livetennisapi-swift/1.2.1",
         session: URLSession? = nil,
         onRateLimit: (@Sendable (RateLimit) -> Void)? = nil
     ) {
@@ -695,7 +695,7 @@ public final class LiveTennisApiClient: @unchecked Sendable {
             let data: Data
             let response: HTTPURLResponse
             do {
-                let (body, raw) = try await session.data(for: request)
+                let (body, raw) = try await session.ltaData(for: request)
                 guard let http = raw as? HTTPURLResponse else {
                     throw LiveTennisApiError.connection(
                         url: url.absoluteString,
@@ -756,3 +756,69 @@ public final class LiveTennisApiClient: @unchecked Sendable {
         try await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
     }
 }
+
+extension URLSession {
+    /// `data(for:)` where the platform has it, and a data task where it does
+    /// not. swift-corelibs-foundation before Swift 6 (Linux and Windows) ships
+    /// no async `URLSession` API, so `data(for:)` does not compile there.
+    func ltaData(for request: URLRequest) async throws -> (Data, URLResponse) {
+        #if canImport(FoundationNetworking)
+            let box = DataTaskBox()
+            return try await withTaskCancellationHandler {
+                try await withCheckedThrowingContinuation { continuation in
+                    let task = dataTask(with: request) { data, response, error in
+                        if let error {
+                            continuation.resume(throwing: error)
+                        } else if let response {
+                            continuation.resume(returning: (data ?? Data(), response))
+                        } else {
+                            continuation.resume(throwing: URLError(.badServerResponse))
+                        }
+                    }
+                    // Only the completion handler resumes the continuation,
+                    // including when the call was cancelled before this point.
+                    box.start(task)
+                }
+            } onCancel: {
+                box.cancel()
+            }
+        #else
+            return try await data(for: request)
+        #endif
+    }
+}
+
+#if canImport(FoundationNetworking)
+    /// Holds the data task so that cancelling the Swift task cancels it, even
+    /// when the cancellation lands before the task has been created.
+    private final class DataTaskBox: @unchecked Sendable {
+        // @unchecked: both fields are only touched while holding `lock`.
+        private let lock = NSLock()
+        private var task: URLSessionDataTask?
+        private var cancelled = false
+
+        /// Keeps and resumes the task. When the Swift task was already
+        /// cancelled, it cancels the data task instead of starting it, so the
+        /// completion handler still runs once, with `URLError.cancelled`, and
+        /// the session holds nothing that could complete later.
+        func start(_ task: URLSessionDataTask) {
+            lock.lock()
+            if cancelled {
+                lock.unlock()
+                task.cancel()
+                return
+            }
+            self.task = task
+            task.resume()
+            lock.unlock()
+        }
+
+        func cancel() {
+            lock.lock()
+            cancelled = true
+            let task = self.task
+            lock.unlock()
+            task?.cancel()
+        }
+    }
+#endif

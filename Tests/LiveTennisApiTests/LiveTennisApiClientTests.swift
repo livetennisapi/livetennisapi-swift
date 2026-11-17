@@ -37,6 +37,14 @@ final class StubURLProtocol: URLProtocol {
     override func stopLoading() {}
 }
 
+/// A URLProtocol that never answers, so only cancellation can end a request.
+final class SilentURLProtocol: URLProtocol {
+    override class func canInit(with request: URLRequest) -> Bool { true }
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+    override func startLoading() {}
+    override func stopLoading() {}
+}
+
 final class LiveTennisApiClientTests: XCTestCase {
     static let key = "test-key"
 
@@ -282,6 +290,77 @@ final class LiveTennisApiClientTests: XCTestCase {
         let health = try await makeClient(maxRetries: 1).health()
         XCTAssertEqual(health.status, "ok")
         XCTAssertEqual(StubURLProtocol.requests.count, 2)
+    }
+
+    func testCancellingTheCallingTaskEndsAPendingRequest() async throws {
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [SilentURLProtocol.self]
+        let client = LiveTennisApiClient(
+            apiKey: Self.key,
+            baseURL: "https://stub.invalid/api/public/v1",
+            maxRetries: 0,
+            session: URLSession(configuration: configuration))
+
+        let outcome = Outcome()
+        let call = Task {
+            do {
+                _ = try await client.health()
+                outcome.set(nil)
+            } catch {
+                outcome.set(error)
+            }
+        }
+        try await Task.sleep(nanoseconds: 200_000_000)
+        call.cancel()
+
+        // Poll rather than await the task: a request that ignores
+        // cancellation would hang the suite instead of failing this test.
+        for _ in 0..<50 where !outcome.isSet {
+            try await Task.sleep(nanoseconds: 100_000_000)
+        }
+        XCTAssertTrue(outcome.isSet, "the request was still pending 5 seconds after cancel")
+        guard outcome.isSet else { return }
+        guard case .connection(_, let underlying)? = outcome.error as? LiveTennisApiError else {
+            return XCTFail("expected a connection error, got \(String(describing: outcome.error))")
+        }
+        XCTAssertEqual((underlying as? URLError)?.code, .cancelled)
+    }
+
+    func testACallFromAnAlreadyCancelledTaskFailsOnceAndLeavesNoTaskBehind() async throws {
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [SilentURLProtocol.self]
+        let session = URLSession(configuration: configuration)
+        let client = LiveTennisApiClient(
+            apiKey: Self.key,
+            baseURL: "https://stub.invalid/api/public/v1",
+            maxRetries: 0,
+            session: session)
+
+        let outcome = Outcome()
+        let call = Task {
+            withUnsafeCurrentTask { $0?.cancel() }
+            do {
+                _ = try await client.health()
+                outcome.set(nil)
+            } catch {
+                outcome.set(error)
+            }
+        }
+        for _ in 0..<50 where !outcome.isSet {
+            try await Task.sleep(nanoseconds: 100_000_000)
+        }
+        XCTAssertTrue(outcome.isSet, "a call from a cancelled task was still pending after 5 seconds")
+        guard outcome.isSet else { return }
+        guard case .connection(_, let underlying)? = outcome.error as? LiveTennisApiError else {
+            return XCTFail("expected a connection error, got \(String(describing: outcome.error))")
+        }
+        XCTAssertEqual((underlying as? URLError)?.code, .cancelled)
+
+        // A data task left registered with the session would complete now,
+        // and a second resume of the same continuation would trap.
+        session.invalidateAndCancel()
+        try await Task.sleep(nanoseconds: 500_000_000)
+        _ = await call.result
     }
 
     func testTheRateLimitObserverSeesSuccessfulResponses() async throws {
@@ -1021,5 +1100,31 @@ final class Observed: @unchecked Sendable {
         lock.lock()
         defer { lock.unlock() }
         return storage
+    }
+}
+
+/// How a background call ended: set once, read from the test.
+final class Outcome: @unchecked Sendable {
+    private let lock = NSLock()
+    private var done = false
+    private var stored: Error?
+
+    func set(_ error: Error?) {
+        lock.lock()
+        done = true
+        stored = error
+        lock.unlock()
+    }
+
+    var isSet: Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        return done
+    }
+
+    var error: Error? {
+        lock.lock()
+        defer { lock.unlock() }
+        return stored
     }
 }

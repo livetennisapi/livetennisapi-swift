@@ -24,7 +24,7 @@ Challenger, ITF and juniors.
 Add to your `Package.swift`:
 
 ```swift
-.package(url: "https://github.com/livetennisapi/livetennisapi-swift.git", from: "1.2.0")
+.package(url: "https://github.com/livetennisapi/livetennisapi-swift.git", from: "1.2.1")
 ```
 
 **Zero dependencies.** `URLSession` + `Codable` only (with `FoundationNetworking`
