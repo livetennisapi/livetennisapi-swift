@@ -4,6 +4,17 @@ All notable changes to this package are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org).
 
+## [1.2.1] - 2026-11-17
+
+### Fixed
+
+- The package builds on Linux with Swift 5.10 again. 1.1.1 and 1.2.0 called
+  `URLSession.data(for:)`, which swift-corelibs-foundation only gained in
+  Swift 6. Where `FoundationNetworking` exists (Linux and Windows), requests
+  now run on a data task behind a checked continuation. Cancelling the
+  calling task cancels the request, as it does with `data(for:)`. Apple
+  platforms keep calling `data(for:)`.
+
 ## [1.2.0] - 2026-09-02
 
 ### Added
